@@ -74,16 +74,26 @@ class _AuthGateState extends State<AuthGate> {
   late final GoTrueClient _auth;
   StreamSubscription<AuthState>? _subscription;
   User? _user;
+  String? _authStreamError;
 
   @override
   void initState() {
     super.initState();
     _auth = Supabase.instance.client.auth;
     _user = _auth.currentUser;
-    _subscription = _auth.onAuthStateChange.listen((state) {
-      if (!mounted) return;
-      setState(() => _user = state.session?.user);
-    });
+    _subscription = _auth.onAuthStateChange.listen(
+      (state) {
+        if (!mounted) return;
+        setState(() {
+          _user = state.session?.user;
+          _authStreamError = null;
+        });
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!mounted) return;
+        setState(() => _authStreamError = error.toString());
+      },
+    );
   }
 
   @override
@@ -94,6 +104,13 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
+    if (_authStreamError != null) {
+      return _RetryPage(
+        title: 'Проблема с обновлением сеанса',
+        message: 'Проверь соединение. Подробности: $_authStreamError',
+        onRetry: () => setState(() => _authStreamError = null),
+      );
+    }
     final user = _user;
     return user == null ? const AuthPage() : OrganizationGate(key: ValueKey(user.id), user: user);
   }
