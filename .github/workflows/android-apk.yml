@@ -1,0 +1,83 @@
+name: Android APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    name: Build installable Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      # These are public client-side Supabase values, not server secrets.
+      # Never put the Supabase service_role or Secret key here.
+      SUPABASE_URL: https://ujcmpxctdzbuazudbzxt.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_XCYeISBDiVEUnV_NxZXXTw_C1Mxoxci
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android platform files
+        working-directory: app
+        run: flutter create --platforms=android --org ru.teplitsapro .
+
+      - name: Install Flutter dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Analyze Dart code
+        working-directory: app
+        continue-on-error: true
+        run: flutter analyze
+
+      - name: Build debug APK
+        working-directory: app
+        run: >
+          flutter build apk --debug
+          --dart-define=SUPABASE_URL=${SUPABASE_URL}
+          --dart-define=SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: teplitsa-pro-android-apk-${{ github.run_number }}
+          path: app/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish APK to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "android-test-${GITHUB_RUN_NUMBER}" \
+            "app/build/app/outputs/flutter-apk/app-debug.apk#TeplitsaPro-Android-debug.apk" \
+            --title "ТЕПЛИЦА PRO — Android test build #${GITHUB_RUN_NUMBER}" \
+            --notes "Тестовая Android-сборка ТЕПЛИЦА PRO. Это debug APK для установки на собственный тестовый телефон. Не использовать для production." \
+            --prerelease
