@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -7,24 +9,35 @@ const _supabasePublishableKey =
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final hasConfig = _supabaseUrl.isNotEmpty && _supabasePublishableKey.isNotEmpty;
+  Object? initializationError;
 
-  final hasSupabaseConfig =
-      _supabaseUrl.isNotEmpty && _supabasePublishableKey.isNotEmpty;
-
-  if (hasSupabaseConfig) {
-    await Supabase.initialize(
-      url: _supabaseUrl,
-      publishableKey: _supabasePublishableKey,
-    );
+  if (hasConfig) {
+    try {
+      await Supabase.initialize(
+        url: _supabaseUrl,
+        publishableKey: _supabasePublishableKey,
+      );
+    } catch (error) {
+      initializationError = error;
+    }
   }
 
-  runApp(TeplitsaProApp(supabaseConfigured: hasSupabaseConfig));
+  runApp(TeplitsaProApp(
+    supabaseConfigured: hasConfig && initializationError == null,
+    initializationError: initializationError,
+  ));
 }
 
 class TeplitsaProApp extends StatelessWidget {
-  const TeplitsaProApp({required this.supabaseConfigured, super.key});
+  const TeplitsaProApp({
+    required this.supabaseConfigured,
+    this.initializationError,
+    super.key,
+  });
 
   final bool supabaseConfigured;
+  final Object? initializationError;
 
   @override
   Widget build(BuildContext context) {
@@ -38,15 +51,512 @@ class TeplitsaProApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: DashboardPage(supabaseConfigured: supabaseConfigured),
+      home: initializationError != null
+          ? _SimpleMessagePage(
+              title: 'Не удалось подключить Supabase',
+              message: 'Проверь параметры подключения. Подробности: $initializationError',
+            )
+          : supabaseConfigured
+              ? const AuthGate()
+              : const DashboardPage(supabaseConfigured: false),
+    );
+  }
+}
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  late final GoTrueClient _auth;
+  StreamSubscription<AuthState>? _subscription;
+  User? _user;
+
+  @override
+  void initState() {
+    super.initState();
+    _auth = Supabase.instance.client.auth;
+    _user = _auth.currentUser;
+    _subscription = _auth.onAuthStateChange.listen((state) {
+      if (!mounted) return;
+      setState(() => _user = state.session?.user);
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = _user;
+    return user == null ? const AuthPage() : OrganizationGate(key: ValueKey(user.id), user: user);
+  }
+}
+
+class AuthPage extends StatefulWidget {
+  const AuthPage({super.key});
+
+  @override
+  State<AuthPage> createState() => _AuthPageState();
+}
+
+class _AuthPageState extends State<AuthPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _confirmPassword = TextEditingController();
+  bool _signUp = false;
+  bool _busy = false;
+  bool _hidePassword = true;
+  String? _message;
+  bool _isError = false;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    _confirmPassword.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+
+    try {
+      final email = _email.text.trim().toLowerCase();
+      if (_signUp) {
+        final response = await Supabase.instance.client.auth.signUp(
+          email: email,
+          password: _password.text,
+        );
+        if (!mounted) return;
+        setState(() {
+          _isError = false;
+          _message = response.session == null
+              ? 'Учётная запись создана. Проверь почту и подтверди адрес, затем войди в приложение.'
+              : 'Регистрация завершена. Выполняется вход.';
+        });
+      } else {
+        await Supabase.instance.client.auth.signInWithPassword(
+          email: email,
+          password: _password.text,
+        );
+      }
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      final text = error.message.toLowerCase();
+      setState(() {
+        _isError = true;
+        if (text.contains('invalid login credentials')) {
+          _message = 'Неверный email или пароль.';
+        } else if (text.contains('email not confirmed')) {
+          _message = 'Сначала подтверди email по ссылке из письма.';
+        } else if (text.contains('user already registered')) {
+          _message = 'Этот email уже зарегистрирован. Переключись на «Войти».';
+        } else {
+          _message = error.message;
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isError = true;
+        _message = 'Не удалось связаться с Supabase. Проверь интернет и настройки проекта.';
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Icon(Icons.eco_outlined, size: 48),
+                      const SizedBox(height: 12),
+                      Text(
+                        'ТЕПЛИЦА PRO',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _signUp ? 'Создание тестовой учётной записи' : 'Вход в систему',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.email],
+                        decoration: const InputDecoration(
+                          labelText: 'Электронная почта',
+                          prefixIcon: Icon(Icons.email_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          final valueText = value?.trim() ?? '';
+                          return valueText.contains('@') ? null : 'Введи корректный email';
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _password,
+                        obscureText: _hidePassword,
+                        autofillHints: _signUp
+                            ? const [AutofillHints.newPassword]
+                            : const [AutofillHints.password],
+                        decoration: InputDecoration(
+                          labelText: 'Пароль',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            tooltip: _hidePassword ? 'Показать пароль' : 'Скрыть пароль',
+                            onPressed: () => setState(() => _hidePassword = !_hidePassword),
+                            icon: Icon(_hidePassword ? Icons.visibility : Icons.visibility_off),
+                          ),
+                        ),
+                        validator: (value) {
+                          final password = value ?? '';
+                          if (password.isEmpty) return 'Введи пароль';
+                          if (_signUp && password.length < 8) {
+                            return 'Используй не менее 8 символов';
+                          }
+                          return null;
+                        },
+                      ),
+                      if (_signUp) ...[
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _confirmPassword,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Повтори пароль',
+                            prefixIcon: Icon(Icons.lock_reset_outlined),
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) => value == _password.text
+                              ? null
+                              : 'Пароли не совпадают',
+                        ),
+                      ],
+                      if (_message != null) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          _message!,
+                          style: TextStyle(
+                            color: _isError
+                                ? Theme.of(context).colorScheme.error
+                                : Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      FilledButton(
+                        onPressed: _busy ? null : _submit,
+                        child: _busy
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(_signUp ? 'Создать учётную запись' : 'Войти'),
+                      ),
+                      TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => setState(() {
+                                  _signUp = !_signUp;
+                                  _message = null;
+                                }),
+                        child: Text(
+                          _signUp
+                              ? 'Уже есть аккаунт? Войти'
+                              : 'Создать тестовую учётную запись',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Пока используй только тестовые данные. Не передавай пароль другим людям.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class OrganizationGate extends StatefulWidget {
+  const OrganizationGate({required this.user, super.key});
+
+  final User user;
+
+  @override
+  State<OrganizationGate> createState() => _OrganizationGateState();
+}
+
+class _OrganizationGateState extends State<OrganizationGate> {
+  late Future<List<Map<String, dynamic>>> _memberships;
+
+  @override
+  void initState() {
+    super.initState();
+    _memberships = _loadMemberships();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadMemberships() async {
+    final rows = await Supabase.instance.client
+        .from('memberships')
+        .select('organization_id, role, organizations(name)')
+        .eq('user_id', widget.user.id)
+        .eq('active', true);
+    return rows.map((row) => Map<String, dynamic>.from(row)).toList();
+  }
+
+  String _organizationName(Map<String, dynamic> membership) {
+    final organization = membership['organizations'];
+    if (organization is Map) {
+      return organization['name']?.toString() ?? 'Хозяйство';
+    }
+    return 'Хозяйство';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _memberships,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const _LoadingPage(message: 'Загружаем хозяйства…');
+        }
+        if (snapshot.hasError) {
+          return _RetryPage(
+            title: 'Не удалось загрузить хозяйства',
+            message: 'Проверь доступ к базе. Подробности: ${snapshot.error}',
+            onRetry: () => setState(() => _memberships = _loadMemberships()),
+          );
+        }
+        final rows = snapshot.data ?? [];
+        if (rows.isEmpty) {
+          return _CreateOrganizationPage(
+            userEmail: widget.user.email ?? '',
+            onCreated: () => setState(() => _memberships = _loadMemberships()),
+          );
+        }
+        if (rows.length == 1) {
+          final membership = rows.single;
+          return DashboardPage(
+            supabaseConfigured: true,
+            organizationName: _organizationName(membership),
+            userEmail: widget.user.email,
+            userRole: membership['role']?.toString(),
+          );
+        }
+        return Scaffold(
+          appBar: AppBar(title: const Text('Выбери хозяйство')),
+          body: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              const Text('Для этой учётной записи доступно несколько хозяйств.'),
+              const SizedBox(height: 12),
+              for (final membership in rows)
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.warehouse_outlined),
+                    title: Text(_organizationName(membership)),
+                    subtitle: Text('Роль: ${membership['role'] ?? 'участник'}'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => DashboardPage(
+                            supabaseConfigured: true,
+                            organizationName: _organizationName(membership),
+                            userEmail: widget.user.email,
+                            userRole: membership['role']?.toString(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              TextButton(
+                onPressed: () => Supabase.instance.client.auth.signOut(),
+                child: const Text('Выйти'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CreateOrganizationPage extends StatefulWidget {
+  const _CreateOrganizationPage({
+    required this.userEmail,
+    required this.onCreated,
+  });
+
+  final String userEmail;
+  final VoidCallback onCreated;
+
+  @override
+  State<_CreateOrganizationPage> createState() => _CreateOrganizationPageState();
+}
+
+class _CreateOrganizationPageState extends State<_CreateOrganizationPage> {
+  final _name = TextEditingController(text: 'Моё тепличное хозяйство');
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  Future<void> _create() async {
+    final name = _name.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Введи название хозяйства.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await Supabase.instance.client.rpc(
+        'create_organization',
+        params: {'p_name': name},
+      );
+      if (mounted) widget.onCreated();
+    } on PostgrestException catch (error) {
+      if (mounted) setState(() => _error = 'Не удалось создать хозяйство: ${error.message}');
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Не удалось создать хозяйство. Проверь соединение.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Первоначальная настройка'),
+        actions: [
+          IconButton(
+            tooltip: 'Выйти',
+            onPressed: _busy ? null : () => Supabase.instance.client.auth.signOut(),
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Icon(Icons.warehouse_outlined, size: 44),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Создай первое хозяйство',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Вход выполнен как ${widget.userEmail}. Эта учётная запись станет владельцем хозяйства.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _name,
+                      maxLength: 160,
+                      decoration: const InputDecoration(
+                        labelText: 'Название хозяйства',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                    ],
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: _busy ? null : _create,
+                      child: _busy
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Создать хозяйство'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class DashboardPage extends StatelessWidget {
-  const DashboardPage({required this.supabaseConfigured, super.key});
+  const DashboardPage({
+    required this.supabaseConfigured,
+    this.organizationName,
+    this.userEmail,
+    this.userRole,
+    super.key,
+  });
 
   final bool supabaseConfigured;
+  final String? organizationName;
+  final String? userEmail;
+  final String? userRole;
 
   static const modules = <_ModuleInfo>[
     _ModuleInfo('Теплицы и зоны', Icons.warehouse_outlined),
@@ -65,16 +575,19 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'ТЕПЛИЦА PRO',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
+        title: const Text('ТЕПЛИЦА PRO', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
-          IconButton(
-            tooltip: 'Профиль и настройки',
-            onPressed: () {},
-            icon: const Icon(Icons.account_circle_outlined),
-          ),
+          if (supabaseConfigured)
+            IconButton(
+              tooltip: 'Выйти',
+              onPressed: () async {
+                await Supabase.instance.client.auth.signOut();
+                if (context.mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+              },
+              icon: const Icon(Icons.logout),
+            ),
         ],
       ),
       body: LayoutBuilder(
@@ -93,8 +606,16 @@ class DashboardPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Панель управления',
-                          style: Theme.of(context).textTheme.headlineSmall),
+                      Text(
+                        organizationName ?? 'Панель управления',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      if (userEmail != null) ...[
+                        const SizedBox(height: 6),
+                        Text(userEmail!, style: const TextStyle(color: Colors.black54)),
+                        if (userRole != null)
+                          Text('Роль: $userRole', style: const TextStyle(color: Colors.black54)),
+                      ],
                       const SizedBox(height: 8),
                       const Text(
                         'Учёт теплиц, выращивания, ресурсов, урожая и финансов в одном месте.',
@@ -102,35 +623,32 @@ class DashboardPage extends StatelessWidget {
                       const SizedBox(height: 12),
                       Chip(
                         avatar: Icon(
-                          supabaseConfigured
-                              ? Icons.cloud_done_outlined
-                              : Icons.cloud_off_outlined,
+                          supabaseConfigured ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
                           size: 18,
                         ),
                         label: Text(
                           supabaseConfigured
-                              ? 'Конфигурация Supabase загружена'
+                              ? 'Вход выполнен, хозяйство выбрано'
                               : 'Ожидает настройки Supabase',
                         ),
                       ),
-                      Text(
-                        supabaseConfigured
-                            ? 'Клиент Supabase инициализирован. Авторизация и проверка доступа будут добавлены следующим этапом.'
-                            : 'Перед запуском передайте SUPABASE_URL и SUPABASE_PUBLISHABLE_KEY через параметры сборки.',
-                        style: const TextStyle(color: Colors.black54),
-                      ),
-                      const SizedBox(height: 8),
                       const Text(
-                        'Работа с реальными данными пока не включена.',
+                        'Это начальный экран. Разделы и операции будут подключаться поэтапно.',
                         style: TextStyle(color: Colors.black54),
                       ),
+                      if (!supabaseConfigured) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Работа с реальными данными пока не включена.',
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 20),
-              Text('Разделы хозяйства',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text('Разделы хозяйства', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 12),
               GridView.builder(
                 shrinkWrap: true,
@@ -150,9 +668,7 @@ class DashboardPage extends StatelessWidget {
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                              'Раздел «${module.title}» будет подключён на следующем этапе.',
-                            ),
+                            content: Text('Раздел «${module.title}» будет подключён позже.'),
                           ),
                         );
                       },
@@ -163,10 +679,7 @@ class DashboardPage extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Icon(module.icon, size: 30),
-                            Text(
-                              module.title,
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
+                            Text(module.title, style: Theme.of(context).textTheme.titleSmall),
                           ],
                         ),
                       ),
@@ -182,9 +695,89 @@ class DashboardPage extends StatelessWidget {
   }
 }
 
+class _LoadingPage extends StatelessWidget {
+  const _LoadingPage({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(message),
+            ],
+          ),
+        ),
+      );
+}
+
+class _RetryPage extends StatelessWidget {
+  const _RetryPage({
+    required this.title,
+    required this.message,
+    required this.onRetry,
+  });
+
+  final String title;
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 12),
+                  Text(message, textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  FilledButton(onPressed: onRetry, child: const Text('Повторить')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+class _SimpleMessagePage extends StatelessWidget {
+  const _SimpleMessagePage({required this.title, required this.message});
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_outlined, size: 44),
+                  const SizedBox(height: 12),
+                  Text(title, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(message, textAlign: TextAlign.center),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
 class _ModuleInfo {
   const _ModuleInfo(this.title, this.icon);
-
   final String title;
   final IconData icon;
 }
