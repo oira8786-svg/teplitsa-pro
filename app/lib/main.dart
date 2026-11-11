@@ -1,11 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
-  runApp(const TeplitsaProApp());
+const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+const _supabasePublishableKey =
+    String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final hasSupabaseConfig =
+      _supabaseUrl.isNotEmpty && _supabasePublishableKey.isNotEmpty;
+
+  if (hasSupabaseConfig) {
+    await Supabase.initialize(
+      url: _supabaseUrl,
+      publishableKey: _supabasePublishableKey,
+    );
+  }
+
+  runApp(TeplitsaProApp(supabaseConfigured: hasSupabaseConfig));
 }
 
 class TeplitsaProApp extends StatelessWidget {
-  const TeplitsaProApp({super.key});
+  const TeplitsaProApp({required this.supabaseConfigured, super.key});
+
+  final bool supabaseConfigured;
 
   @override
   Widget build(BuildContext context) {
@@ -19,13 +38,15 @@ class TeplitsaProApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const DashboardPage(),
+      home: DashboardPage(supabaseConfigured: supabaseConfigured),
     );
   }
 }
 
 class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key});
+  const DashboardPage({required this.supabaseConfigured, super.key});
+
+  final bool supabaseConfigured;
 
   static const modules = <_ModuleInfo>[
     _ModuleInfo('Теплицы и зоны', Icons.warehouse_outlined),
@@ -79,12 +100,28 @@ class DashboardPage extends StatelessWidget {
                         'Учёт теплиц, выращивания, ресурсов, урожая и финансов в одном месте.',
                       ),
                       const SizedBox(height: 12),
-                      const Chip(
-                        avatar: Icon(Icons.construction_outlined, size: 18),
-                        label: Text('Начальная версия интерфейса'),
+                      Chip(
+                        avatar: Icon(
+                          supabaseConfigured
+                              ? Icons.cloud_done_outlined
+                              : Icons.cloud_off_outlined,
+                          size: 18,
+                        ),
+                        label: Text(
+                          supabaseConfigured
+                              ? 'Конфигурация Supabase загружена'
+                              : 'Ожидает настройки Supabase',
+                        ),
                       ),
+                      Text(
+                        supabaseConfigured
+                            ? 'Клиент Supabase инициализирован. Авторизация и проверка доступа будут добавлены следующим этапом.'
+                            : 'Перед запуском передайте SUPABASE_URL и SUPABASE_PUBLISHABLE_KEY через параметры сборки.',
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                      const SizedBox(height: 8),
                       const Text(
-                        'Данные пока не подключены. Следующий этап — авторизация и связь с базой Supabase.',
+                        'Работа с реальными данными пока не включена.',
                         style: TextStyle(color: Colors.black54),
                       ),
                     ],
