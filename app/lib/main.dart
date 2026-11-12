@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'crop_batches_page.dart';
+import 'operations_hub_page.dart';
 
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabasePublishableKey =
@@ -710,6 +711,14 @@ class DashboardPage extends StatelessWidget {
                                     userRole == 'manager' ||
                                     userRole == 'agronomist',
                               ),
+                            ),
+                          );
+                          return;
+                        }
+                        if (index >= 5 && index <= 8 && organizationId != null) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => OperationsHubPage(organizationId: organizationId!),
                             ),
                           );
                           return;
