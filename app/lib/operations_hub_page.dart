@@ -7,20 +7,28 @@ class OperationsHubPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-    length: 5,
+    length: 9,
     child: Scaffold(
       appBar: AppBar(title: const Text('Рабочие разделы'),
         bottom: const TabBar(isScrollable: true, tabs: [
           Tab(icon: Icon(Icons.inventory_2_outlined), text: 'Склад'),
+          Tab(icon: Icon(Icons.swap_horiz_outlined), text: 'Движения'),
           Tab(icon: Icon(Icons.agriculture_outlined), text: 'Урожай'),
+          Tab(icon: Icon(Icons.people_alt_outlined), text: 'Покупатели'),
           Tab(icon: Icon(Icons.point_of_sale_outlined), text: 'Продажи'),
+          Tab(icon: Icon(Icons.payments_outlined), text: 'Платежи'),
+          Tab(icon: Icon(Icons.receipt_long_outlined), text: 'Расходы'),
           Tab(icon: Icon(Icons.groups_outlined), text: 'Команда'),
           Tab(icon: Icon(Icons.sticky_note_2_outlined), text: 'Заметки'),
         ])),
       body: TabBarView(children: [
         _RecordList(org: organizationId, table: 'inventory_items', columns: 'name,category,base_unit,minimum_stock,sku', titleField: 'name'),
+        _RecordList(org: organizationId, table: 'inventory_movements', columns: 'movement_type,quantity,unit,occurred_at,document_number,notes', titleField: 'movement_type'),
         _RecordList(org: organizationId, table: 'harvest_lots', columns: 'lot_number,harvested_at,quantity,unit,grade,status,storage_location', titleField: 'lot_number'),
+        _RecordList(org: organizationId, table: 'customers', columns: 'name,phone,email,address', titleField: 'name'),
         _RecordList(org: organizationId, table: 'sales', columns: 'sale_number,sold_at,status,currency,notes', titleField: 'sale_number'),
+        _RecordList(org: organizationId, table: 'payments', columns: 'amount,currency,payment_method,paid_at,reference_number', titleField: 'reference_number'),
+        _RecordList(org: organizationId, table: 'expenses', columns: 'expense_date,category,description,amount,currency,document_number', titleField: 'description'),
         _TeamList(org: organizationId),
         _RecordList(org: organizationId, table: 'notes_and_attachments', columns: 'title,body,created_at,storage_path', titleField: 'title'),
       ]),
