@@ -1,3 +1,4 @@
+import 'inventory_pages.dart';
 // The following style-only lints are handled in a later formatting pass.
 // ignore_for_file: curly_braces_in_flow_control_structures, prefer_interpolation_to_compose_strings
 
@@ -32,8 +33,8 @@ class OperationsHubPage extends StatelessWidget {
           Tab(icon: Icon(Icons.sticky_note_2_outlined), text: 'Заметки'),
         ])),
       body: TabBarView(children: [
-        _RecordList(org: organizationId, table: 'inventory_items', columns: 'name,category,base_unit,minimum_stock,sku', titleField: 'name'),
-        _RecordList(org: organizationId, table: 'inventory_movements', columns: 'movement_type,quantity,unit,occurred_at,document_number,notes', titleField: 'movement_type'),
+        InventoryItemsPage(organizationId: organizationId),
+        InventoryMovementsPage(organizationId: organizationId),
         _RecordList(org: organizationId, table: 'harvest_lots', columns: 'lot_number,harvested_at,quantity,unit,grade,status,storage_location', titleField: 'lot_number'),
         _RecordList(org: organizationId, table: 'customers', columns: 'name,phone,email,address', titleField: 'name'),
         _RecordList(org: organizationId, table: 'sales', columns: 'sale_number,sold_at,status,currency,notes', titleField: 'sale_number'),
