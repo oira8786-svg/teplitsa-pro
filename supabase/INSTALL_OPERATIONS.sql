@@ -4,7 +4,7 @@
 
 -- SOURCE: supabase/migrations/202611110006_task_assignee_tenant_integrity.sql
 -- Tenant integrity for task assignees; safe if this migration was already applied.
-do $
+do $$
 begin
   if not exists (
     select 1
