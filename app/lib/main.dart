@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'crop_batches_page.dart';
+
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabasePublishableKey =
     String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
@@ -699,9 +701,24 @@ class DashboardPage extends StatelessWidget {
                           );
                           return;
                         }
+                        if (index == 1 && organizationId != null) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => CropBatchesPage(
+                                organizationId: organizationId!,
+                                canManage: userRole == 'owner' ||
+                                    userRole == 'manager' ||
+                                    userRole == 'agronomist',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
                         final message = index == 0
                             ? 'Сначала войди в хозяйство, чтобы вести список теплиц.'
-                            : 'Раздел «${module.title}» будет подключён позже.';
+                            : index == 1
+                                ? 'Сначала войди в хозяйство, чтобы вести культуры и партии.'
+                                : 'Раздел «${module.title}» будет подключён позже.';
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(message)),
                         );
