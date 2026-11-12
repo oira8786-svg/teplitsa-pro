@@ -62,7 +62,7 @@ class TeplitsaProApp extends StatelessWidget {
           foregroundColor: Colors.white,
           centerTitle: false,
         ),
-        cardTheme: CardThemeData(
+        cardTheme: const CardThemeData(
           color: const Color(0xFFEAF5EA),
           elevation: 1.5,
           margin: EdgeInsets.zero,
