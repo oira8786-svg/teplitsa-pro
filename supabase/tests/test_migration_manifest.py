@@ -62,6 +62,16 @@ class MigrationManifestTests(unittest.TestCase):
             "Install bundle migration sections must follow migration filename order",
         )
 
+
+    def test_install_bundle_has_balanced_dollar_quotes(self) -> None:
+        sql = INSTALL_BUNDLE.read_text(encoding="utf-8")
+        self.assertEqual(
+            sql.count("$") % 2,
+            0,
+            "Unbalanced PostgreSQL dollar-quoted function or block",
+        )
+        self.assertNotRegex(sql, r"(?m)^\\$;$")
+
     def test_task_assignee_tenant_constraint_is_in_both_install_paths(self) -> None:
         migration = MIGRATIONS_DIR / "202611110006_task_assignee_tenant_integrity.sql"
         self.assertTrue(migration.is_file(), "Task tenant-integrity migration is missing")
