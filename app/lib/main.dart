@@ -63,7 +63,7 @@ class TeplitsaProApp extends StatelessWidget {
           centerTitle: false,
         ),
         cardTheme: const CardThemeData(
-          color: const Color(0xFFEAF5EA),
+          color: Color(0xFFEAF5EA),
           elevation: 1.5,
           margin: EdgeInsets.zero,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
