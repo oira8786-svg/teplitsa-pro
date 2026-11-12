@@ -40,7 +40,7 @@ class OperationsHubPage extends StatelessWidget {
         _RecordList(org: organizationId, table: 'payments', columns: 'amount,currency,payment_method,paid_at,reference_number', titleField: 'reference_number'),
         _RecordList(org: organizationId, table: 'expenses', columns: 'expense_date,category,description,amount,currency,document_number', titleField: 'description'),
         _TeamList(org: organizationId),
-        _RecordList(org: organizationId, table: 'notes_and_attachments', columns: 'title,body,created_at,storage_path', titleField: 'title'),
+        _NotesPage(org: organizationId),
       ]),
     ),
   );
@@ -137,4 +137,172 @@ class _TeamListState extends State<_TeamList> {
             style:TextStyle(color:Colors.black54)),
         ]));
     });
+}
+
+
+class _NotesPage extends StatefulWidget {
+  const _NotesPage({required this.org});
+  final String org;
+
+  @override
+  State<_NotesPage> createState() => _NotesPageState();
+}
+
+class _NotesPageState extends State<_NotesPage> {
+  final _title = TextEditingController();
+  final _body = TextEditingController();
+  late Future<List<Map<String, dynamic>>> _future;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _body.dispose();
+    super.dispose();
+  }
+
+  Future<List<Map<String, dynamic>>> _load() async {
+    final rows = await Supabase.instance.client
+        .from('notes_and_attachments')
+        .select('id,title,body,created_at,uploaded_by')
+        .eq('organization_id', widget.org)
+        .order('created_at', ascending: false);
+    return rows.map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  Future<void> _save() async {
+    final body = _body.text.trim();
+    final title = _title.text.trim();
+    if (body.isEmpty && title.isEmpty) {
+      setState(() => _error = 'Заполни заголовок или текст заметки.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      await Supabase.instance.client.from('notes_and_attachments').insert({
+        'organization_id': widget.org,
+        'title': title.isEmpty ? null : title,
+        'body': body.isEmpty ? null : body,
+        'uploaded_by': user?.id,
+      });
+      _title.clear();
+      _body.clear();
+      if (mounted) {
+        setState(() => _future = _load());
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Заметка сохранена')),
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = 'Не удалось сохранить заметку: $error');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(12),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Новая заметка', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _title,
+                  decoration: const InputDecoration(
+                    labelText: 'Заголовок',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _body,
+                  minLines: 2,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    labelText: 'Текст заметки',
+                    alignLabelWithHint: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                ],
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: _saving ? null : _save,
+                  icon: _saving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.save_outlined),
+                  label: const Text('Сохранить заметку'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      Expanded(
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text('Не удалось загрузить заметки: ${snapshot.error}'));
+            }
+            final rows = snapshot.data ?? [];
+            if (rows.isEmpty) {
+              return const Center(child: Text('Заметок пока нет'));
+            }
+            return RefreshIndicator(
+              onRefresh: () async {
+                final next = _load();
+                setState(() => _future = next);
+                await next;
+              },
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                itemCount: rows.length,
+                itemBuilder: (context, index) {
+                  final row = rows[index];
+                  final date = DateTime.tryParse(row['created_at']?.toString() ?? '');
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.sticky_note_2_outlined),
+                      title: Text((row['title'] ?? 'Без заголовка').toString()),
+                      subtitle: Text([
+                        if (row['body'] != null) row['body'].toString(),
+                        if (date != null) date.toLocal().toString().substring(0, 16),
+                      ].join('\\n')),
+                      isThreeLine: row['body'] != null,
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    ],
+  );
 }
