@@ -392,7 +392,8 @@ class _OperationFormDialogState extends State<_OperationFormDialog> {
         'p_organization_id': widget.organizationId,
         'p_batch_id': _batchId,
         'p_operation_type': _type,
-        'p_performed_at': DateTime.now().toUtc().toIso8601String(),
+        // Omit p_performed_at: PostgreSQL uses its own now() and is not
+        // affected by an incorrectly configured device clock.
         'p_product_id': _needsProduct ? _productId : null,
         'p_quantity': quantity,
         'p_quantity_unit': quantity == null ? null : _quantityUnit,
