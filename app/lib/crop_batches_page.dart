@@ -102,6 +102,20 @@ class _CropsState extends State<_Crops> {
       if (mounted) msg(context, 'Ошибка: ${e.message}');
     } catch (_) { if (mounted) msg(context, 'Не удалось сохранить. Проверь соединение.'); }
   }
+  Future<void> editCrop(Map<String, dynamic> crop) async {
+    final draft = await showDialog<Map<String, String>>(context: context,
+      builder: (_) => _CropForm(initialName: s(crop['name']), initialCategory: s(crop['category'])));
+    if (draft == null || !mounted) return;
+    try {
+      await Supabase.instance.client.from('crops').update({
+        'name': draft['name'], 'category': draft['category'],
+      }).eq('id', s(crop['id'])).eq('organization_id', widget.org);
+      if (mounted) { setState(() => future = load()); msg(context, 'Культура обновлена.'); }
+    } on PostgrestException catch (e) {
+      if (mounted) msg(context, 'Ошибка изменения культуры: ${e.message}');
+    } catch (_) { if (mounted) msg(context, 'Не удалось изменить культуру.'); }
+  }
+
   Future<void> addVariety(String cropId, String cropName) async {
     final draft = await showDialog<Map<String, String>>(context: context,
       builder: (_) => _VarietyForm(cropName: cropName));
@@ -115,6 +129,21 @@ class _CropsState extends State<_Crops> {
     } on PostgrestException catch (e) {
       if (mounted) msg(context, 'Ошибка: ${e.message}');
     } catch (_) { if (mounted) msg(context, 'Не удалось сохранить сорт.'); }
+  }
+
+  Future<void> editVariety(Map<String, dynamic> variety, String cropName) async {
+    final draft = await showDialog<Map<String, String>>(context: context,
+      builder: (_) => _VarietyForm(cropName: cropName,
+        initialName: s(variety['name']), initialSupplier: s(variety['supplier'])));
+    if (draft == null || !mounted) return;
+    try {
+      await Supabase.instance.client.from('crop_varieties').update({
+        'name': draft['name'], 'supplier': draft['supplier'],
+      }).eq('id', s(variety['id'])).eq('organization_id', widget.org);
+      if (mounted) { setState(() => future = load()); msg(context, 'Сорт обновлён.'); }
+    } on PostgrestException catch (e) {
+      if (mounted) msg(context, 'Ошибка изменения сорта: ${e.message}');
+    } catch (_) { if (mounted) msg(context, 'Не удалось изменить сорт.'); }
   }
 
   @override
@@ -142,10 +171,16 @@ class _CropsState extends State<_Crops> {
             subtitle: Text(cropKinds[s(c['category'])] ?? 'Другая культура'),
             childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             children: [
+              if (widget.manage) Align(alignment: Alignment.centerLeft,
+                child: TextButton.icon(onPressed: () => editCrop(c),
+                  icon: const Icon(Icons.edit_outlined), label: const Text('Изменить культуру'))),
               for (final v in (c['varieties'] as List<Map<String, dynamic>>))
                 ListTile(dense: true, contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.sell_outlined), title: Text(s(v['name'])),
-                  subtitle: s(v['supplier']).isEmpty ? null : Text('Поставщик: ${s(v['supplier'])}')),
+                  subtitle: s(v['supplier']).isEmpty ? null : Text('Поставщик: ${s(v['supplier'])}'),
+                  trailing: widget.manage ? IconButton(
+                    tooltip: 'Изменить сорт', icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => editVariety(v, s(c['name']))) : null),
               if ((c['varieties'] as List).isEmpty)
                 const Align(alignment: Alignment.centerLeft, child: Text('Сорта не добавлены.')),
               if (widget.manage) Align(alignment: Alignment.centerLeft,
@@ -162,13 +197,15 @@ class _CropsState extends State<_Crops> {
 }
 
 class _CropForm extends StatefulWidget {
-  const _CropForm();
+  const _CropForm({this.initialName = '', this.initialCategory = 'vegetable'});
+  final String initialName, initialCategory;
   @override
   State<_CropForm> createState() => _CropFormState();
 }
 class _CropFormState extends State<_CropForm> {
-  final name = TextEditingController();
-  String category = 'vegetable';
+  late final TextEditingController name = TextEditingController(text: widget.initialName);
+  late String category = cropKinds.containsKey(widget.initialCategory)
+      ? widget.initialCategory : 'vegetable';
   @override
   void dispose() { name.dispose(); super.dispose(); }
   @override
@@ -192,14 +229,14 @@ class _CropFormState extends State<_CropForm> {
   );
 }
 class _VarietyForm extends StatefulWidget {
-  const _VarietyForm({required this.cropName});
-  final String cropName;
+  const _VarietyForm({required this.cropName, this.initialName = '', this.initialSupplier = ''});
+  final String cropName, initialName, initialSupplier;
   @override
   State<_VarietyForm> createState() => _VarietyFormState();
 }
 class _VarietyFormState extends State<_VarietyForm> {
-  final name = TextEditingController();
-  final supplier = TextEditingController();
+  late final name = TextEditingController(text: widget.initialName);
+  late final supplier = TextEditingController(text: widget.initialSupplier);
   @override
   void dispose() { name.dispose(); supplier.dispose(); super.dispose(); }
   @override
