@@ -30,10 +30,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -54,8 +54,11 @@ jobs:
 
       - name: Analyze Dart code
         working-directory: app
-        continue-on-error: true
         run: flutter analyze
+
+      - name: Run Flutter widget tests
+        working-directory: app
+        run: flutter test
 
       - name: Build debug APK
         working-directory: app
@@ -65,7 +68,7 @@ jobs:
           --dart-define=SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY}
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: teplitsa-pro-android-apk-${{ github.run_number }}
           path: app/build/app/outputs/flutter-apk/app-debug.apk
