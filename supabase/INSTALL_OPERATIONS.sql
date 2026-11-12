@@ -2,28 +2,6 @@
 -- Безопасно выполнять повторно: функции создаются через CREATE OR REPLACE.
 -- Выполнять в тестовом Supabase после миграций 001-004.
 
--- SOURCE: supabase/migrations/202611110006_task_assignee_tenant_integrity.sql
--- Tenant integrity for task assignees; safe if this migration was already applied.
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_catalog.pg_constraint
-    where conname = 'tasks_assigned_user_same_org_fk'
-      and conrelid = 'public.tasks'::regclass
-  ) then
-    alter table public.tasks
-      add constraint tasks_assigned_user_same_org_fk
-      foreign key (organization_id, assigned_user_id)
-      references public.memberships(organization_id, user_id);
-  end if;
-end;
-$;
-
-create index if not exists tasks_org_assigned_user_idx
-  on public.tasks(organization_id, assigned_user_id)
-  where assigned_user_id is not null;
-
 -- SOURCE: supabase/migrations/202611110005_agronomy_operation_rpc.sql
 -- ТЕПЛИЦА PRO / 005_agronomy_operation_rpc.sql
 -- Audited, tenant-scoped creation of performed agronomy operations.
@@ -196,8 +174,30 @@ comment on function public.create_agronomy_operation(
 ) is 'Creates a tenant-scoped agronomy operation with role checks and audit. Treatment safety remains needs_review until official label verification.';
 
 
+-- SOURCE: supabase/migrations/202611110006_task_assignee_tenant_integrity.sql
+-- Tenant integrity for task assignees; safe if this migration was already applied.
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_catalog.pg_constraint
+    where conname = 'tasks_assigned_user_same_org_fk'
+      and conrelid = 'public.tasks'::regclass
+  ) then
+    alter table public.tasks
+      add constraint tasks_assigned_user_same_org_fk
+      foreign key (organization_id, assigned_user_id)
+      references public.memberships(organization_id, user_id);
+  end if;
+end;
+$;
+
+create index if not exists tasks_org_assigned_user_idx
+  on public.tasks(organization_id, assigned_user_id)
+  where assigned_user_id is not null;
+
 -- SOURCE: supabase/migrations/202611120001_inventory_movement_rpc.sql
--- ФаёзАгро / 006_inventory_movement_rpc.sql
+-- ТЕПЛИЦА PRO / 006_inventory_movement_rpc.sql
 -- Transactional, tenant-scoped stock ledger posting. Apply after migrations 001-005.
 
 create or replace function public.post_inventory_movement(
@@ -368,7 +368,7 @@ comment on function public.post_inventory_movement(
 
 
 -- SOURCE: supabase/migrations/202611120002_harvest_sales_payment_rpc.sql
--- ФаёзАгро / 007_harvest_sales_payment_rpc.sql
+-- ТЕПЛИЦА PRO / 007_harvest_sales_payment_rpc.sql
 -- Audited harvest, sale posting and payment posting. Apply after migrations 001-006.
 
 create or replace function public.record_harvest_lot(
@@ -690,7 +690,7 @@ is 'Records a payment against an outstanding sale balance and updates sale statu
 
 
 -- SOURCE: supabase/migrations/202611120003_finance_tasks_payroll_rpc.sql
--- ФаёзАгро / 008_finance_tasks_payroll_rpc.sql
+-- ТЕПЛИЦА PRO / 008_finance_tasks_payroll_rpc.sql
 -- Audited expenses, assigned tasks and payroll posting. Apply after migrations 001-007.
 
 create or replace function public.record_expense(
