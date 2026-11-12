@@ -588,7 +588,7 @@ class DashboardPage extends StatelessWidget {
     _ModuleInfo('Теплицы и зоны', Icons.warehouse_outlined),
     _ModuleInfo('Культуры и партии', Icons.grass_outlined),
     _ModuleInfo('Агрономический журнал', Icons.event_note_outlined),
-    _ModuleInfo('Полив и подкормки', Icons.water_drop_outlined),
+    _ModuleInfo('Календарь агротехнических работ', Icons.calendar_month_outlined),
     _ModuleInfo('Защита растений', Icons.health_and_safety_outlined),
     _ModuleInfo('Склад', Icons.inventory_2_outlined),
     _ModuleInfo('Урожай и продажи', Icons.shopping_basket_outlined),
@@ -720,6 +720,19 @@ class DashboardPage extends StatelessWidget {
                         if (index == 2 && organizationId != null) {
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
+                              builder: (_) => AgronomyOperationsPage(
+                                organizationId: organizationId!,
+                                canManage: userRole == 'owner' ||
+                                    userRole == 'manager' ||
+                                    userRole == 'agronomist',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        if (index == 3 && organizationId != null) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
                               builder: (_) => AgronomyCalendarPage(
                                 organizationId: organizationId!,
                               ),
@@ -727,7 +740,7 @@ class DashboardPage extends StatelessWidget {
                           );
                           return;
                         }
-                        if ((index == 3 || index == 4) && organizationId != null) {
+                        if (index == 4 && organizationId != null) {
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
                               builder: (_) => AgronomyOperationsPage(
@@ -735,7 +748,7 @@ class DashboardPage extends StatelessWidget {
                                 canManage: userRole == 'owner' ||
                                     userRole == 'manager' ||
                                     userRole == 'agronomist',
-                                protectionOnly: index == 4,
+                                protectionOnly: true,
                               ),
                             ),
                           );
