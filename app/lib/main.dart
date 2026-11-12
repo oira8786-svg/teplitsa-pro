@@ -48,7 +48,7 @@ class TeplitsaProApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ФаёзАгро',
+      title: 'ТЕПЛИЦА PRO',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -237,7 +237,7 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'ФаёзАгро',
+                        'ТЕПЛИЦА PRO',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.w800,
@@ -618,7 +618,7 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ФаёзАгро', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.2)),
+        title: const Text('ТЕПЛИЦА PRO', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.2)),
         
         actions: [
           if (supabaseConfigured)
