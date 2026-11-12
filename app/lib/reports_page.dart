@@ -67,10 +67,10 @@ class _ReportsPageState extends State<ReportsPage> {
           ('Теплицы', '${d['greenhouses']}', Icons.warehouse_outlined),
           ('Партии растений', '${d['batches']}', Icons.grass_outlined),
           ('Партии урожая', '${d['harvestLots']}', Icons.agriculture_outlined),
-          ('Собрано всего', '${(d['harvestQuantity'] as num).toStringAsFixed(2)}', Icons.scale_outlined),
+          ('Собрано всего', (d['harvestQuantity'] as num).toStringAsFixed(2), Icons.scale_outlined),
           ('Продажи', '${d['sales']}', Icons.point_of_sale_outlined),
           ('Позиции склада', '${d['inventory']}', Icons.inventory_2_outlined),
-          ('Учтённые расходы, ₽', '${(d['expenses'] as num).toStringAsFixed(2)}', Icons.receipt_long_outlined),
+          ('Учтённые расходы, ₽', (d['expenses'] as num).toStringAsFixed(2), Icons.receipt_long_outlined),
         ];
         return RefreshIndicator(
           onRefresh: () async { final next = _load(); setState(() => _future = next); await next; },
