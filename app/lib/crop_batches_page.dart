@@ -578,9 +578,16 @@ class _ProductFormState extends State<_ProductForm> {
     content: SizedBox(width: 440, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
       TextField(controller: name, decoration: const InputDecoration(labelText: 'Название *')),
       const SizedBox(height: 8),
-      DropdownButtonFormField<String>(initialValue: category, decoration: const InputDecoration(labelText: 'Тип средства'),
-        items: productKinds.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-        onChanged: (v) { if (v != null) setState(() => category = v); }),
+      DropdownButtonFormField<String>(
+        isExpanded: true,
+        initialValue: category,
+        decoration: const InputDecoration(labelText: 'Тип средства'),
+        items: productKinds.entries.map((e) => DropdownMenuItem(
+          value: e.key,
+          child: Text(e.value, maxLines: 2, overflow: TextOverflow.ellipsis),
+        )).toList(),
+        onChanged: (v) { if (v != null) setState(() => category = v); },
+      ),
       TextField(controller: manufacturer, decoration: const InputDecoration(labelText: 'Производитель')),
       TextField(controller: ingredient, decoration: const InputDecoration(labelText: 'Действующее вещество')),
       TextField(controller: registration, decoration: const InputDecoration(labelText: 'Регистрационный номер РФ')),
