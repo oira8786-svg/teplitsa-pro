@@ -2,6 +2,7 @@
 
 import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'calendar_reminder_service.dart';
 
 class AgronomyCalendarPage extends StatefulWidget {
   const AgronomyCalendarPage({required this.organizationId, super.key});
@@ -26,6 +27,35 @@ class _AgronomyCalendarPageState extends State<AgronomyCalendarPage> {
 
   void _changeMonth(int delta) => setState(() => _month = DateTime(_month.year, _month.month + delta));
   String _dateLabel(DateTime date) => '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+
+  int _reminderId(_CalendarEvent event) {
+    final key = widget.organizationId + '|' + event.date.toIso8601String() + '|' + event.title + '|' + event.details;
+    var hash = 0x811c9dc5;
+    for (final unit in key.codeUnits) {
+      hash = ((hash ^ unit) * 0x01000193) & 0x7fffffff;
+    }
+    return hash;
+  }
+
+  Future<void> _setReminder(_CalendarEvent event) async {
+    final allowed = await CalendarReminderService.instance.requestPermissions();
+    if (!mounted) return;
+    if (!allowed) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Разреши уведомления для ФаёзАгро в настройках телефона.')));
+      return;
+    }
+    final picked = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 8, minute: 0), helpText: 'Во сколько напомнить?');
+    if (picked == null || !mounted) return;
+    final at = DateTime(event.date.year, event.date.month, event.date.day, picked.hour, picked.minute);
+    try {
+      await CalendarReminderService.instance.schedule(id: _reminderId(event), title: event.title, body: event.details, at: at);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Звуковое напоминание установлено на ' + _dateLabel(at) + ' в ' + picked.format(context))));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось установить напоминание: ' + error.toString())));
+    }
+  }
 
   List<_CalendarEvent> _events(List<Map<String, dynamic>> batches) {
     final result = <_CalendarEvent>[];
@@ -90,7 +120,7 @@ class _AgronomyCalendarPageState extends State<AgronomyCalendarPage> {
             const SizedBox(height: 8),
             for (final event in events) Card(child: ListTile(
               leading: CircleAvatar(child: Icon(event.icon)), title: Text(event.title), subtitle: Text(event.details),
-              trailing: Text(_dateLabel(event.date), style: const TextStyle(fontWeight: FontWeight.w600)),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [Text(_dateLabel(event.date), style: const TextStyle(fontWeight: FontWeight.w600)), IconButton(tooltip: 'Поставить звуковое напоминание', onPressed: () => _setReminder(event), icon: const Icon(Icons.alarm_add_outlined))]),
             )),
           ],
           const SizedBox(height: 12),
