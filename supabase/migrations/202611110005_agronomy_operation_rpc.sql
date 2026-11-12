@@ -105,7 +105,7 @@ begin
   end if;
 
   if p_operation_type in ('fertilizing','feeding') then
-    if v_product_category not in ('chemical_fertilizer','biological_fertilizer') then
+    if v_product_category is null or v_product_category not in ('chemical_fertilizer','biological_fertilizer') then
       raise exception 'Select a registered fertilizer product for feeding/fertilizing' using errcode = '22023';
     end if;
   elsif p_operation_type = 'chemical_treatment' then
