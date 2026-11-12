@@ -54,7 +54,7 @@ jobs:
         run: |
           mkdir -p android/app/src/main/res
           cp -R tooling/android/res/* android/app/src/main/res/
-          sed -i 's/android:label="[^"]*"/android:label="ФаёзАгро"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="[^"]*"/android:label="ТЕПЛИЦА PRO"/' android/app/src/main/AndroidManifest.xml
 
       - name: Validate SQL migration manifest
         run: python -m unittest discover -s supabase/tests -v
