@@ -1,3 +1,6 @@
+// The following style-only lints are handled in a later formatting pass.
+// ignore_for_file: curly_braces_in_flow_control_structures, prefer_interpolation_to_compose_strings
+
 import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
