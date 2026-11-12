@@ -684,7 +684,7 @@ class DashboardPage extends StatelessWidget {
                   crossAxisCount: columns,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 1.35,
+                  childAspectRatio: 1.08,
                 ),
                 itemBuilder: (context, index) {
                   final module = modules[index];
@@ -788,7 +788,12 @@ class DashboardPage extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Icon(module.icon, size: 30),
-                            Text(module.title, style: Theme.of(context).textTheme.titleSmall),
+                            Text(
+                              module.title,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
                           ],
                         ),
                       ),
