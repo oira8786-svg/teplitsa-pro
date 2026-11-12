@@ -125,9 +125,9 @@ class _CropsState extends State<_Crops> {
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: future,
       builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-        if (snap.hasError) return _Retry(message: 'Не удалось загрузить культуры: ${snap.error}',
-          retry: () => setState(() => future = load()));
+        if (snap.connectionState != ConnectionState.done) { return const Center(child: CircularProgressIndicator()); }
+        if (snap.hasError) { return _Retry(message: 'Не удалось загрузить культуры: ${snap.error}',
+          retry: () => setState(() => future = load())); }
         final rows = snap.data ?? [];
         if (rows.isEmpty) return RefreshIndicator(onRefresh: refresh, child: ListView(
           physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(24),
@@ -212,9 +212,9 @@ class _VarietyFormState extends State<_VarietyForm> {
     actions: [
       TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
       FilledButton(onPressed: () {
-        if (name.text.trim().isNotEmpty) Navigator.pop(context, {
+        if (name.text.trim().isNotEmpty) { Navigator.pop(context, {
           'name': name.text.trim(), 'supplier': supplier.text.trim(),
-        });
+        }); }
       }, child: const Text('Сохранить')),
     ],
   );
@@ -274,9 +274,9 @@ class _BatchesState extends State<_Batches> {
       icon: const Icon(Icons.add), label: const Text('Новая партия'),
     ) : null,
     body: FutureBuilder<_BatchData>(future: future, builder: (context, snap) {
-      if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-      if (snap.hasError) return _Retry(message: 'Не удалось загрузить партии: ${snap.error}',
-        retry: () => setState(() => future = load()));
+      if (snap.connectionState != ConnectionState.done) { return const Center(child: CircularProgressIndicator()); }
+      if (snap.hasError) { return _Retry(message: 'Не удалось загрузить партии: ${snap.error}',
+        retry: () => setState(() => future = load())); }
       final d = snap.data!;
       if (d.batches.isEmpty) return RefreshIndicator(onRefresh: refresh,
         child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(24),
@@ -446,8 +446,8 @@ class _ProductsState extends State<_Products> {
     ) : null,
     body: FutureBuilder<List<Map<String, dynamic>>>(future: future, builder: (context, snap) {
       if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-      if (snap.hasError) return _Retry(message: 'Не удалось загрузить каталог: ${snap.error}',
-        retry: () => setState(() => future = load()));
+      if (snap.hasError) { return _Retry(message: 'Не удалось загрузить каталог: ${snap.error}',
+        retry: () => setState(() => future = load())); }
       final rows = snap.data ?? [];
       if (rows.isEmpty) return const Center(child: Padding(
         padding: EdgeInsets.all(24), child: Text('Каталог пуст. Здесь хранятся сведения о препаратах и удобрениях.'),
