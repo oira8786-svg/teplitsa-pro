@@ -31,6 +31,17 @@ const _volumeUnits = <String, String>{
 
 String _value(dynamic value) => value?.toString() ?? '';
 
+List<Map<String, dynamic>> _asMapRows(dynamic value) {
+  if (value is! List) return [];
+  return value.expand((item) {
+    if (item is Map) return [Map<String, dynamic>.from(item)];
+    if (item is List) {
+      return item.whereType<Map>().map((row) => Map<String, dynamic>.from(row));
+    }
+    return <Map<String, dynamic>>[];
+  }).toList();
+}
+
 String _localDate(dynamic value) {
   final parsed = DateTime.tryParse(_value(value));
   if (parsed == null) return '—';
@@ -322,7 +333,7 @@ class _OperationFormDialogState extends State<_OperationFormDialog> {
   Future<void> _loadReferences() async {
     final db = Supabase.instance.client;
     final batches = await db.from('batches')
-        .select('id,batch_number,crops(name)')
+        .select('id,batch_number')
         .eq('organization_id', widget.organizationId)
         .neq('status', 'cancelled')
         .order('batch_number');
@@ -332,8 +343,8 @@ class _OperationFormDialogState extends State<_OperationFormDialog> {
         .order('name');
     if (!mounted) return;
     setState(() {
-      _batches = batches.map((r) => Map<String, dynamic>.from(r)).toList();
-      _products = products.map((r) => Map<String, dynamic>.from(r)).toList();
+      _batches = _asMapRows(batches);
+      _products = _asMapRows(products);
       _referencesReady = true;
       if (_batches.isNotEmpty) _batchId = _value(_batches.first['id']);
       _syncProduct();
@@ -439,10 +450,9 @@ class _OperationFormDialogState extends State<_OperationFormDialog> {
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Партия растений'),
                     items: _batches.map((b) {
-                      final crop = b['crops'] is Map ? _value((b['crops'] as Map)['name']) : '';
                       return DropdownMenuItem(
                         value: _value(b['id']),
-                        child: Text('${_value(b['batch_number'])} • $crop', overflow: TextOverflow.ellipsis),
+                        child: Text('Партия ${_value(b['batch_number'])}', overflow: TextOverflow.ellipsis),
                       );
                     }).toList(),
                     onChanged: _busy ? null : (value) => setState(() => _batchId = value),
