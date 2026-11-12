@@ -826,6 +826,41 @@ class _GreenhousesPageState extends State<GreenhousesPage> {
     await _records;
   }
 
+
+  Future<void> _editPlace(Map<String, dynamic> place, {required bool zone}) async {
+    final draft = await showDialog<_PlaceDraft>(
+      context: context,
+      builder: (_) => _PlaceFormDialog(
+        title: zone ? 'Изменить зону' : 'Изменить теплицу',
+        nameLabel: zone ? 'Название зоны' : 'Название теплицы',
+        initialDraft: _PlaceDraft(
+          name: place['name']?.toString() ?? '',
+          area: double.tryParse(place['area']?.toString() ?? ''),
+          areaUnit: place['area_unit']?.toString() ?? 'm2',
+          notes: place['notes']?.toString(),
+        ),
+      ),
+    );
+    if (draft == null || !mounted) return;
+    final table = zone ? 'greenhouse_zones' : 'greenhouses';
+    try {
+      await Supabase.instance.client.from(table).update({
+        'name': draft.name,
+        'area': draft.area,
+        'area_unit': draft.areaUnit,
+        'notes': draft.notes,
+      }).eq('id', place['id'].toString())
+        .eq('organization_id', widget.organizationId);
+      if (!mounted) return;
+      await _refresh();
+      _showError(zone ? 'Данные зоны обновлены.' : 'Данные теплицы обновлены.');
+    } on PostgrestException catch (error) {
+      if (mounted) _showError('Не удалось сохранить изменения: ${error.message}');
+    } catch (_) {
+      if (mounted) _showError('Не удалось сохранить изменения. Проверь подключение.');
+    }
+  }
+
   Future<void> _addGreenhouse() async {
     final draft = await showDialog<_PlaceDraft>(
       context: context,
@@ -998,6 +1033,13 @@ class _GreenhousesPageState extends State<GreenhousesPage> {
                       leading: const Icon(Icons.warehouse_outlined),
                       title: Text(greenhouse['name']?.toString() ?? 'Теплица'),
                       subtitle: Text(_areaLabel(greenhouse['area'], greenhouse['area_unit'])),
+                      trailing: widget.canManage
+                          ? IconButton(
+                              tooltip: 'Изменить теплицу',
+                              icon: const Icon(Icons.edit_outlined),
+                              onPressed: () => _editPlace(greenhouse, zone: false),
+                            )
+                          : null,
                       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                       children: [
                         if ((greenhouse['notes']?.toString() ?? '').isNotEmpty)
@@ -1026,6 +1068,13 @@ class _GreenhousesPageState extends State<GreenhousesPage> {
                             leading: const Icon(Icons.grid_view_outlined),
                             title: Text(rawZone['name']?.toString() ?? 'Зона'),
                             subtitle: Text(_areaLabel(rawZone['area'], rawZone['area_unit'])),
+                            trailing: widget.canManage
+                                ? IconButton(
+                                    tooltip: 'Изменить зону',
+                                    icon: const Icon(Icons.edit_outlined, size: 20),
+                                    onPressed: () => _editPlace(rawZone, zone: true),
+                                  )
+                                : null,
                           ),
                         if ((greenhouse['zones'] as List).isEmpty)
                           const Padding(
@@ -1078,11 +1127,13 @@ class _PlaceFormDialog extends StatefulWidget {
     required this.title,
     required this.nameLabel,
     this.helperText,
+    this.initialDraft,
   });
 
   final String title;
   final String nameLabel;
   final String? helperText;
+  final _PlaceDraft? initialDraft;
 
   @override
   State<_PlaceFormDialog> createState() => _PlaceFormDialogState();
@@ -1094,6 +1145,18 @@ class _PlaceFormDialogState extends State<_PlaceFormDialog> {
   final _area = TextEditingController();
   final _notes = TextEditingController();
   String _areaUnit = 'm2';
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.initialDraft;
+    if (draft != null) {
+      _name.text = draft.name;
+      _area.text = draft.area?.toString() ?? '';
+      _areaUnit = draft.areaUnit;
+      _notes.text = draft.notes ?? '';
+    }
+  }
 
   @override
   void dispose() {
