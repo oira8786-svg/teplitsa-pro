@@ -32,10 +32,12 @@ class _ReportsPageState extends State<ReportsPage> {
       db.from('sales').select('id,status,sold_at')
           .eq('organization_id', widget.organizationId)
           .neq('status', 'cancelled'),
-      db.from('sale_lines').select('quantity,unit_price,discount')
-          .eq('organization_id', widget.organizationId),
-      db.from('payments').select('amount')
-          .eq('organization_id', widget.organizationId),
+      db.from('sale_lines').select('quantity,unit_price,discount,sales!inner(status)')
+          .eq('organization_id', widget.organizationId)
+          .neq('sales.status', 'cancelled').neq('sales.status', 'draft'),
+      db.from('payments').select('amount,sales!inner(status)')
+          .eq('organization_id', widget.organizationId)
+          .neq('sales.status', 'cancelled').neq('sales.status', 'draft'),
       db.from('expenses').select('amount')
           .eq('organization_id', widget.organizationId),
       db.from('inventory_items').select('id,name,base_unit,minimum_stock')
