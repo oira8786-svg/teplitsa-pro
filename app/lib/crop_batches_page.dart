@@ -286,6 +286,19 @@ class _BatchesState extends State<_Batches> {
   }
   Future<void> refresh() async { setState(() => future = load()); await future; }
 
+  Future<void> edit(Map<String, dynamic> batch, _BatchData data) async {
+    final draft = await showDialog<Map<String, dynamic>>(
+      context: context, builder: (_) => _BatchForm(data: data, initial: batch));
+    if (draft == null || !mounted) return;
+    try {
+      await Supabase.instance.client.from('batches').update(draft)
+        .eq('id', s(batch['id'])).eq('organization_id', widget.org);
+      if (mounted) { setState(() => future = load()); msg(context, 'Партия обновлена.'); }
+    } on PostgrestException catch (e) {
+      if (mounted) msg(context, 'Не удалось изменить партию: ${e.message}');
+    } catch (_) { if (mounted) msg(context, 'Не удалось изменить партию.'); }
+  }
+
   Future<void> add(_BatchData data) async {
     if (data.crops.isEmpty || data.greenhouses.isEmpty) {
       msg(context, 'Сначала добавь культуру и теплицу.'); return;
@@ -334,6 +347,9 @@ class _BatchesState extends State<_Batches> {
             subtitle: Text('$crop • ${batchStates[s(b['status'])] ?? s(b['status'])}'),
             childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             children: [
+              if (widget.manage) Align(alignment: Alignment.centerLeft,
+                child: TextButton.icon(onPressed: () => edit(b, d),
+                  icon: const Icon(Icons.edit_outlined), label: const Text('Изменить партию'))),
               _Info('Сорт', variety.isEmpty ? '—' : variety),
               _Info('Теплица', greenhouse.isEmpty ? '—' : greenhouse),
               _Info('Зона', zone.isEmpty ? '—' : zone),
@@ -350,21 +366,34 @@ class _BatchesState extends State<_Batches> {
   );
 }
 class _BatchForm extends StatefulWidget {
-  const _BatchForm({required this.data});
+  const _BatchForm({required this.data, this.initial});
   final _BatchData data;
+  final Map<String, dynamic>? initial;
   @override
   State<_BatchForm> createState() => _BatchFormState();
 }
 class _BatchFormState extends State<_BatchForm> {
-  final number = TextEditingController(), qty = TextEditingController(), notes = TextEditingController();
+  late final number = TextEditingController(text: s(widget.initial?['batch_number']));
+  late final qty = TextEditingController(text: s(widget.initial?['quantity_planted']));
+  late final notes = TextEditingController(text: s(widget.initial?['notes']));
   String? cropId, greenhouseId;
-  String varietyId = '', zoneId = '', unit = 'pcs';
+  String varietyId = '', zoneId = '', unit = 'pcs', status = 'planned';
   DateTime? sowing, planting, harvest;
   @override
   void initState() {
     super.initState();
-    if (widget.data.crops.isNotEmpty) cropId = s(widget.data.crops.first['id']);
-    if (widget.data.greenhouses.isNotEmpty) greenhouseId = s(widget.data.greenhouses.first['id']);
+    final initial = widget.initial;
+    cropId = s(initial?['crop_id']).isNotEmpty ? s(initial?['crop_id']) :
+      (widget.data.crops.isNotEmpty ? s(widget.data.crops.first['id']) : null);
+    greenhouseId = s(initial?['greenhouse_id']).isNotEmpty ? s(initial?['greenhouse_id']) :
+      (widget.data.greenhouses.isNotEmpty ? s(widget.data.greenhouses.first['id']) : null);
+    varietyId = s(initial?['variety_id']);
+    zoneId = s(initial?['zone_id']);
+    unit = s(initial?['quantity_unit']).isEmpty ? 'pcs' : s(initial?['quantity_unit']);
+    status = s(initial?['status']).isEmpty ? 'planned' : s(initial?['status']);
+    sowing = DateTime.tryParse(s(initial?['sowing_date']));
+    planting = DateTime.tryParse(s(initial?['planting_date']));
+    harvest = DateTime.tryParse(s(initial?['planned_harvest_date']));
   }
   @override
   void dispose() { number.dispose(); qty.dispose(); notes.dispose(); super.dispose(); }
@@ -388,7 +417,7 @@ class _BatchFormState extends State<_BatchForm> {
       'sowing_date': sowing == null ? null : iso(sowing),
       'planting_date': planting == null ? null : iso(planting),
       'planned_harvest_date': harvest == null ? null : iso(harvest),
-      'quantity_planted': n, 'quantity_unit': unit, 'status': 'planned',
+      'quantity_planted': n, 'quantity_unit': unit, 'status': status,
       'notes': notes.text.trim().isEmpty ? null : notes.text.trim(),
     });
   }
@@ -402,7 +431,7 @@ class _BatchFormState extends State<_BatchForm> {
     if (!vs.any((v) => s(v['id']) == varietyId)) varietyId = '';
     if (!zs.any((z) => s(z['id']) == zoneId)) zoneId = '';
     return AlertDialog(
-      title: const Text('Новая партия'),
+      title: Text(widget.initial == null ? 'Новая партия' : 'Изменить партию'),
       content: SizedBox(width: 450, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         TextField(controller: number, decoration: const InputDecoration(labelText: 'Номер партии *')),
         const SizedBox(height: 8),
@@ -424,6 +453,11 @@ class _BatchFormState extends State<_BatchForm> {
             ...zs.map((e) => DropdownMenuItem(value: s(e['id']), child: Text(s(e['name']))))],
           onChanged: (v) => setState(() => zoneId = v ?? '')),
         const SizedBox(height: 8),
+        DropdownButtonFormField<String>(initialValue: status,
+          decoration: const InputDecoration(labelText: 'Статус партии'),
+          items: batchStates.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+          onChanged: (v) => setState(() => status = v ?? status)),
+        const SizedBox(height: 8),
         Wrap(spacing: 6, children: [
           dateButton('Посев', sowing, 's'), dateButton('Высадка', planting, 'p'), dateButton('Сбор', harvest, 'h'),
         ]),
@@ -444,7 +478,7 @@ class _BatchFormState extends State<_BatchForm> {
       ]))),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
-        FilledButton(onPressed: save, child: const Text('Создать')),
+        FilledButton(onPressed: save, child: Text(widget.initial == null ? 'Создать' : 'Сохранить изменения')),
       ],
     );
   }
