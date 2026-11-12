@@ -1,3 +1,4 @@
+import 'customer_expense_pages.dart';
 import 'harvest_sales_pages.dart';
 import 'inventory_pages.dart';
 // The following style-only lints are handled in a later formatting pass.
@@ -37,10 +38,10 @@ class OperationsHubPage extends StatelessWidget {
         InventoryItemsPage(organizationId: organizationId),
         InventoryMovementsPage(organizationId: organizationId),
         HarvestPage(organizationId: organizationId),
-        _RecordList(org: organizationId, table: 'customers', columns: 'name,phone,email,address', titleField: 'name'),
+        CustomersPage(organizationId: organizationId),
         SalesPage(organizationId: organizationId),
         _RecordList(org: organizationId, table: 'payments', columns: 'amount,currency,payment_method,paid_at,reference_number', titleField: 'reference_number'),
-        _RecordList(org: organizationId, table: 'expenses', columns: 'expense_date,category,description,amount,currency,document_number', titleField: 'description'),
+        ExpensesPage(organizationId: organizationId),
         _TeamList(org: organizationId),
         _NotesPage(org: organizationId),
       ]),
