@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'crop_batches_page.dart';
 import 'agronomy_calendar_page.dart';
+import 'agronomy_operations_page.dart';
 import 'operations_hub_page.dart';
 
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
@@ -721,6 +722,20 @@ class DashboardPage extends StatelessWidget {
                             MaterialPageRoute<void>(
                               builder: (_) => AgronomyCalendarPage(
                                 organizationId: organizationId!,
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        if ((index == 3 || index == 4) && organizationId != null) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => AgronomyOperationsPage(
+                                organizationId: organizationId!,
+                                canManage: userRole == 'owner' ||
+                                    userRole == 'manager' ||
+                                    userRole == 'agronomist',
+                                protectionOnly: index == 4,
                               ),
                             ),
                           );
