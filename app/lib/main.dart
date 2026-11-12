@@ -48,7 +48,7 @@ class TeplitsaProApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ТЕПЛИЦА PRO',
+      title: 'ФаёзАгро',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
