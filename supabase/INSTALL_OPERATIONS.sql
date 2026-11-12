@@ -985,7 +985,7 @@ is 'Records a payroll payment without allowing overpayment.';
 alter table public.agricultural_products
   add column if not exists registration_status text not null default 'unknown';
 
-do $
+do $$
 begin
   if not exists (
     select 1 from pg_catalog.pg_constraint
@@ -997,7 +997,7 @@ begin
       check (registration_status in ('unknown','active','suspended','cancelled','expired'));
   end if;
 end;
-$;
+$$;
 
 alter table public.treatment_safety
   add column if not exists source_url text,
