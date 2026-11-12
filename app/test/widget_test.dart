@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teplitsa_pro/main.dart';
 
 void main() {
-  testWidgets('FaezAgro dashboard shows all main modules', (tester) async {
+  testWidgets('Teplitsa PRO dashboard shows all main modules', (tester) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -14,7 +14,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('ФаёзАгро'), findsOneWidget);
+    expect(find.text('ТЕПЛИЦА PRO'), findsOneWidget);
     expect(find.text('Разделы хозяйства'), findsOneWidget);
     expect(find.text('Теплицы и зоны'), findsOneWidget);
     expect(find.text('Культуры и партии'), findsOneWidget);
