@@ -26,6 +26,11 @@ String dateText(dynamic value) {
 void msg(BuildContext context, String value) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
 }
+List<Map<String, dynamic>> _mapRows(dynamic rows) {
+  if (rows is! Iterable) return <Map<String, dynamic>>[];
+  return rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList();
+}
+
 String lookup(List<Map<String, dynamic>> list, dynamic id) {
   for (final row in list) {
     if (s(row['id']) == s(id)) return s(row['name']);
@@ -174,7 +179,7 @@ class _CropsState extends State<_Crops> {
               if (widget.manage) Align(alignment: Alignment.centerLeft,
                 child: TextButton.icon(onPressed: () => editCrop(c),
                   icon: const Icon(Icons.edit_outlined), label: const Text('Изменить культуру'))),
-              for (final v in (c['varieties'] as List<Map<String, dynamic>>))
+              for (final v in _mapRows(c['varieties']))
                 ListTile(dense: true, contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.sell_outlined), title: Text(s(v['name'])),
                   subtitle: s(v['supplier']).isEmpty ? null : Text('Поставщик: ${s(v['supplier'])}'),
