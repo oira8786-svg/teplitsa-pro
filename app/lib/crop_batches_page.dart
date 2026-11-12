@@ -445,7 +445,7 @@ class _ProductsState extends State<_Products> {
       onPressed: add, icon: const Icon(Icons.add), label: const Text('Добавить средство'),
     ) : null,
     body: FutureBuilder<List<Map<String, dynamic>>>(future: future, builder: (context, snap) {
-      if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+      if (snap.connectionState != ConnectionState.done) { return const Center(child: CircularProgressIndicator()); }
       if (snap.hasError) { return _Retry(message: 'Не удалось загрузить каталог: ${snap.error}',
         retry: () => setState(() => future = load())); }
       final rows = snap.data ?? [];
