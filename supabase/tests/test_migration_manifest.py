@@ -73,5 +73,32 @@ class MigrationManifestTests(unittest.TestCase):
         self.assertIn(constraint, bundle_sql)
 
 
+    def test_treatment_safety_requires_registration_evidence_and_audit_rpc(self) -> None:
+        migration = MIGRATIONS_DIR / "202611120004_treatment_safety_verification.sql"
+        self.assertTrue(migration.is_file(), "Treatment safety verification migration is missing")
+        migration_sql = migration.read_text(encoding="utf-8")
+        bundle_sql = INSTALL_BUNDLE.read_text(encoding="utf-8")
+
+        for required in (
+            "verify_treatment_safety",
+            "registration_country",
+            "registration_valid_until",
+            "source_url",
+            "source_checked_at",
+            "harvest_wait_minutes",
+            "reentry_wait_minutes",
+            "revoke insert, update, delete on public.treatment_safety",
+            "treatment_safety.verified",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, migration_sql)
+
+        self.assertIn(
+            "-- SOURCE: supabase/migrations/202611120004_treatment_safety_verification.sql",
+            bundle_sql,
+        )
+        self.assertIn("verify_treatment_safety", bundle_sql)
+
+
 if __name__ == "__main__":
     unittest.main()
