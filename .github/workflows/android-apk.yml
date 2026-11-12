@@ -19,7 +19,7 @@ concurrency:
 jobs:
   build-android:
     name: Build installable Android APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     env:
@@ -79,8 +79,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "android-test-${GITHUB_RUN_NUMBER}" \
-            "app/build/app/outputs/flutter-apk/app-debug.apk#TeplitsaPro-Android-debug.apk" \
-            --title "ТЕПЛИЦА PRO — Android test build #${GITHUB_RUN_NUMBER}" \
-            --notes "Тестовая Android-сборка ТЕПЛИЦА PRO. Это debug APK для установки на собственный тестовый телефон. Не использовать для production." \
-            --prerelease
+          TAG="android-test-${GITHUB_RUN_NUMBER}"
+          APK="app/build/app/outputs/flutter-apk/app-debug.apk"
+          ASSET="TeplitsaPro-Android-debug.apk"
+          NOTES="Тестовая Android-сборка ТЕПЛИЦА PRO. Это debug APK для установки на собственный тестовый телефон. Не использовать для production."
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; replacing its APK asset."
+            gh release upload "$TAG" "$APK#$ASSET" --clobber
+          else
+            gh release create "$TAG" "$APK#$ASSET" \
+              --title "ТЕПЛИЦА PRO — Android test build #${GITHUB_RUN_NUMBER}" \
+              --notes "$NOTES" \
+              --prerelease
+          fi
