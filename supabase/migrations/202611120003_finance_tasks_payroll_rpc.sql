@@ -21,7 +21,7 @@ begin
   if not public.has_org_role(p_organization_id,array['owner','manager','accountant']::text[]) then
     raise exception 'Insufficient organization role' using errcode = '42501';
   end if;
-  if p_expense_date is null or p_expense_date > current_date + 1 then
+  if p_expense_date is null or p_expense_date > current_date then
     raise exception 'Expense date is invalid' using errcode = '22023';
   end if;
   if p_category not in ('seeds','fertilizers','plant_protection','utilities','rent','transport','repairs','payroll','packaging','other') then
@@ -243,6 +243,10 @@ begin
   select * into v_accrual from public.payroll_accruals
   where id=p_accrual_id and organization_id=p_organization_id for update;
   if not found then raise exception 'Payroll accrual not found in this organization' using errcode = '23503'; end if;
+
+  if v_accrual.accrual_type = 'deduction' then
+    raise exception 'A deduction cannot be paid as an accrual' using errcode = '23514';
+  end if;
 
   select coalesce(sum(amount),0) into v_paid from public.payroll_payments
   where organization_id=p_organization_id and accrual_id=p_accrual_id;
