@@ -716,9 +716,19 @@ class DashboardPage extends StatelessWidget {
                           return;
                         }
                         if (index >= 5 && index <= 8 && organizationId != null) {
+                          final initialTabIndex = switch (index) {
+                            5 => 0, // Склад
+                            6 => 2, // Урожай
+                            7 => 6, // Расходы
+                            8 => 7, // Команда
+                            _ => 0,
+                          };
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
-                              builder: (_) => OperationsHubPage(organizationId: organizationId!),
+                              builder: (_) => OperationsHubPage(
+                                organizationId: organizationId!,
+                                initialTabIndex: initialTabIndex,
+                              ),
                             ),
                           );
                           return;
