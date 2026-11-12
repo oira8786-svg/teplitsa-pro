@@ -63,13 +63,22 @@ class MigrationManifestTests(unittest.TestCase):
         )
 
 
-    def test_install_bundle_has_balanced_dollar_quotes(self) -> None:
-        sql = INSTALL_BUNDLE.read_text(encoding="utf-8")
-        self.assertEqual(
-            sql.count("$") % 2,
-            0,
-            "Unbalanced PostgreSQL dollar-quoted function or block",
-        )
+    def test_all_sql_dollar_quotes_are_balanced(self) -> None:
+        dollar = chr(36)
+        sql_paths = list(MIGRATIONS_DIR.glob("*.sql")) + [INSTALL_BUNDLE]
+
+        for path in sql_paths:
+            sql = path.read_text(encoding="utf-8")
+            with self.subTest(path=path.name):
+                self.assertEqual(
+                    sql.count(dollar * 2) % 2,
+                    0,
+                    "Unbalanced PostgreSQL dollar-quoted function or block",
+                )
+                self.assertNotIn("\ndo " + dollar + "\nbegin", sql)
+                self.assertNotIn("\nas " + dollar + "\n", sql)
+                self.assertNotIn("\n" + dollar + ";\n", sql)
+
 
     def test_task_assignee_tenant_constraint_is_in_both_install_paths(self) -> None:
         migration = MIGRATIONS_DIR / "202611110006_task_assignee_tenant_integrity.sql"
