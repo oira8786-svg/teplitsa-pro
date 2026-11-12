@@ -190,7 +190,7 @@ begin
       references public.memberships(organization_id, user_id);
   end if;
 end;
-$;
+$$;
 
 create index if not exists tasks_org_assigned_user_idx
   on public.tasks(organization_id, assigned_user_id)
