@@ -1,3 +1,4 @@
+import 'team_payroll_pages.dart';
 import 'customer_expense_pages.dart';
 import 'harvest_sales_pages.dart';
 import 'inventory_pages.dart';
@@ -19,7 +20,7 @@ class OperationsHubPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-    length: 9,
+    length: 10,
     initialIndex: initialTabIndex,
     child: Scaffold(
       appBar: AppBar(title: const Text('Рабочие разделы'),
@@ -31,6 +32,7 @@ class OperationsHubPage extends StatelessWidget {
           Tab(icon: Icon(Icons.point_of_sale_outlined), text: 'Продажи'),
           Tab(icon: Icon(Icons.payments_outlined), text: 'Платежи'),
           Tab(icon: Icon(Icons.receipt_long_outlined), text: 'Расходы'),
+          Tab(icon: Icon(Icons.payments_outlined), text: 'Зарплата'),
           Tab(icon: Icon(Icons.groups_outlined), text: 'Команда'),
           Tab(icon: Icon(Icons.sticky_note_2_outlined), text: 'Заметки'),
         ])),
@@ -42,7 +44,8 @@ class OperationsHubPage extends StatelessWidget {
         SalesPage(organizationId: organizationId),
         _RecordList(org: organizationId, table: 'payments', columns: 'amount,currency,payment_method,paid_at,reference_number', titleField: 'reference_number'),
         ExpensesPage(organizationId: organizationId),
-        _TeamList(org: organizationId),
+        PayrollPage(organizationId: organizationId),
+        TeamTasksPage(organizationId: organizationId),
         _NotesPage(org: organizationId),
       ]),
     ),
