@@ -56,6 +56,12 @@ class MigrationManifestTests(unittest.TestCase):
                     f"Install bundle references missing migration: {name}",
                 )
 
+        self.assertEqual(
+            source_names,
+            sorted(source_names),
+            "Install bundle migration sections must follow migration filename order",
+        )
+
     def test_task_assignee_tenant_constraint_is_in_both_install_paths(self) -> None:
         migration = MIGRATIONS_DIR / "202611110006_task_assignee_tenant_integrity.sql"
         self.assertTrue(migration.is_file(), "Task tenant-integrity migration is missing")
