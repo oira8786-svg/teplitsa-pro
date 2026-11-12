@@ -396,6 +396,7 @@ class _OrganizationGateState extends State<OrganizationGate> {
           final membership = rows.single;
           return DashboardPage(
             supabaseConfigured: true,
+            organizationId: membership['organization_id']?.toString(),
             organizationName: _organizationName(membership),
             userEmail: widget.user.email,
             userRole: membership['role']?.toString(),
@@ -420,6 +421,7 @@ class _OrganizationGateState extends State<OrganizationGate> {
                         MaterialPageRoute<void>(
                           builder: (_) => DashboardPage(
                             supabaseConfigured: true,
+                            organizationId: membership['organization_id']?.toString(),
                             organizationName: _organizationName(membership),
                             userEmail: widget.user.email,
                             userRole: membership['role']?.toString(),
@@ -564,6 +566,7 @@ class _CreateOrganizationPageState extends State<_CreateOrganizationPage> {
 class DashboardPage extends StatelessWidget {
   const DashboardPage({
     required this.supabaseConfigured,
+    this.organizationId,
     this.organizationName,
     this.userEmail,
     this.userRole,
@@ -571,6 +574,7 @@ class DashboardPage extends StatelessWidget {
   });
 
   final bool supabaseConfigured;
+  final String? organizationId;
   final String? organizationName;
   final String? userEmail;
   final String? userRole;
@@ -683,10 +687,23 @@ class DashboardPage extends StatelessWidget {
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
                       onTap: () {
+                        if (index == 0 && organizationId != null) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => GreenhousesPage(
+                                organizationId: organizationId!,
+                                organizationName: organizationName ?? 'Хозяйство',
+                                canManage: userRole == 'owner' || userRole == 'manager',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        final message = index == 0
+                            ? 'Сначала войди в хозяйство, чтобы вести список теплиц.'
+                            : 'Раздел «${module.title}» будет подключён позже.';
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Раздел «${module.title}» будет подключён позже.'),
-                          ),
+                          SnackBar(content: Text(message)),
                         );
                       },
                       child: Padding(
@@ -708,6 +725,445 @@ class DashboardPage extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+
+class GreenhousesPage extends StatefulWidget {
+  const GreenhousesPage({
+    required this.organizationId,
+    required this.organizationName,
+    required this.canManage,
+    super.key,
+  });
+
+  final String organizationId;
+  final String organizationName;
+  final bool canManage;
+
+  @override
+  State<GreenhousesPage> createState() => _GreenhousesPageState();
+}
+
+class _GreenhousesPageState extends State<GreenhousesPage> {
+  late Future<List<Map<String, dynamic>>> _records;
+
+  @override
+  void initState() {
+    super.initState();
+    _records = _loadRecords();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadRecords() async {
+    final client = Supabase.instance.client;
+    final greenhouseRows = await client
+        .from('greenhouses')
+        .select('id, name, area, area_unit, notes')
+        .eq('organization_id', widget.organizationId)
+        .eq('active', true)
+        .order('created_at');
+    final zoneRows = await client
+        .from('greenhouse_zones')
+        .select('id, greenhouse_id, name, area, area_unit, notes')
+        .eq('organization_id', widget.organizationId)
+        .eq('active', true)
+        .order('created_at');
+
+    final zonesByGreenhouse = <String, List<Map<String, dynamic>>>{};
+    for (final rawZone in zoneRows) {
+      final zone = Map<String, dynamic>.from(rawZone);
+      final greenhouseId = zone['greenhouse_id']?.toString() ?? '';
+      zonesByGreenhouse.putIfAbsent(greenhouseId, () => <Map<String, dynamic>>[]).add(zone);
+    }
+
+    return greenhouseRows.map((rawGreenhouse) {
+      final greenhouse = Map<String, dynamic>.from(rawGreenhouse);
+      final id = greenhouse['id']?.toString() ?? '';
+      greenhouse['zones'] = zonesByGreenhouse[id] ?? <Map<String, dynamic>>[];
+      return greenhouse;
+    }).toList();
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _records = _loadRecords());
+    await _records;
+  }
+
+  Future<void> _addGreenhouse() async {
+    final draft = await showDialog<_PlaceDraft>(
+      context: context,
+      builder: (_) => const _PlaceFormDialog(
+        title: 'Новая теплица',
+        nameLabel: 'Название теплицы',
+      ),
+    );
+    if (draft == null || !mounted) return;
+
+    try {
+      await Supabase.instance.client.from('greenhouses').insert({
+        'organization_id': widget.organizationId,
+        'name': draft.name,
+        'area': draft.area,
+        'area_unit': draft.areaUnit,
+        'notes': draft.notes,
+      });
+      if (!mounted) return;
+      setState(() => _records = _loadRecords());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Теплица добавлена.')),
+      );
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      _showError('Не удалось добавить теплицу: ${error.message}');
+    } catch (_) {
+      if (!mounted) return;
+      _showError('Не удалось добавить теплицу. Проверь подключение.');
+    }
+  }
+
+  Future<void> _addZone(String greenhouseId, String greenhouseName) async {
+    final draft = await showDialog<_PlaceDraft>(
+      context: context,
+      builder: (_) => _PlaceFormDialog(
+        title: 'Новая зона',
+        nameLabel: 'Название зоны',
+        helperText: 'Теплица: $greenhouseName',
+      ),
+    );
+    if (draft == null || !mounted) return;
+
+    try {
+      await Supabase.instance.client.from('greenhouse_zones').insert({
+        'organization_id': widget.organizationId,
+        'greenhouse_id': greenhouseId,
+        'name': draft.name,
+        'area': draft.area,
+        'area_unit': draft.areaUnit,
+        'notes': draft.notes,
+      });
+      if (!mounted) return;
+      setState(() => _records = _loadRecords());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Зона добавлена.')),
+      );
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      _showError('Не удалось добавить зону: ${error.message}');
+    } catch (_) {
+      if (!mounted) return;
+      _showError('Не удалось добавить зону. Проверь подключение.');
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  String _areaLabel(dynamic area, dynamic unit) {
+    if (area == null) return 'Площадь не указана';
+    final unitCode = unit?.toString() ?? 'm2';
+    final unitLabel = unitCode == 'ha'
+        ? 'га'
+        : unitCode == 'm2'
+            ? 'м²'
+            : unitCode;
+    return '${area.toString()} $unitLabel';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Теплицы и зоны'),
+        actions: [
+          IconButton(
+            tooltip: 'Обновить список',
+            onPressed: () => _refresh(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      floatingActionButton: widget.canManage
+          ? FloatingActionButton.extended(
+              onPressed: _addGreenhouse,
+              icon: const Icon(Icons.add),
+              label: const Text('Добавить теплицу'),
+            )
+          : null,
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _records,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const _LoadingPage(message: 'Загружаем теплицы и зоны…');
+          }
+          if (snapshot.hasError) {
+            return _RetryPage(
+              title: 'Не удалось загрузить список',
+              message: 'Проверь доступ к хозяйству. Подробности: ${snapshot.error}',
+              onRetry: () => setState(() => _records = _loadRecords()),
+            );
+          }
+
+          final greenhouses = snapshot.data ?? <Map<String, dynamic>>[];
+          if (greenhouses.isEmpty) {
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                children: [
+                  const SizedBox(height: 70),
+                  const Icon(Icons.warehouse_outlined, size: 64, color: Colors.black38),
+                  const SizedBox(height: 16),
+                  Text(
+                    'В хозяйстве пока нет теплиц',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Добавь первую теплицу, укажи площадь и затем создай зоны внутри неё.',
+                    textAlign: TextAlign.center,
+                  ),
+                  if (!widget.canManage) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Добавлять теплицы может владелец или управляющий хозяйства.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              children: [
+                Text(
+                  widget.organizationName,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Теплиц: ${greenhouses.length}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                for (final greenhouse in greenhouses)
+                  Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: ExpansionTile(
+                      leading: const Icon(Icons.warehouse_outlined),
+                      title: Text(greenhouse['name']?.toString() ?? 'Теплица'),
+                      subtitle: Text(_areaLabel(greenhouse['area'], greenhouse['area_unit'])),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      children: [
+                        if ((greenhouse['notes']?.toString() ?? '').isNotEmpty)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(greenhouse['notes'].toString()),
+                            ),
+                          ),
+                        const Divider(height: 1),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 10, bottom: 4),
+                            child: Text(
+                              'Зоны',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                          ),
+                        ),
+                        for (final rawZone in (greenhouse['zones'] as List<Map<String, dynamic>>))
+                          ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.grid_view_outlined),
+                            title: Text(rawZone['name']?.toString() ?? 'Зона'),
+                            subtitle: Text(_areaLabel(rawZone['area'], rawZone['area_unit'])),
+                          ),
+                        if ((greenhouse['zones'] as List).isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text('Зоны ещё не добавлены.'),
+                            ),
+                          ),
+                        if (widget.canManage)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () => _addZone(
+                                greenhouse['id'].toString(),
+                                greenhouse['name'].toString(),
+                              ),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Добавить зону'),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PlaceDraft {
+  const _PlaceDraft({
+    required this.name,
+    required this.area,
+    required this.areaUnit,
+    required this.notes,
+  });
+
+  final String name;
+  final double? area;
+  final String areaUnit;
+  final String? notes;
+}
+
+class _PlaceFormDialog extends StatefulWidget {
+  const _PlaceFormDialog({
+    required this.title,
+    required this.nameLabel,
+    this.helperText,
+  });
+
+  final String title;
+  final String nameLabel;
+  final String? helperText;
+
+  @override
+  State<_PlaceFormDialog> createState() => _PlaceFormDialogState();
+}
+
+class _PlaceFormDialogState extends State<_PlaceFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _name = TextEditingController();
+  final _area = TextEditingController();
+  final _notes = TextEditingController();
+  String _areaUnit = 'm2';
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _area.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    if (!_formKey.currentState!.validate()) return;
+    final areaText = _area.text.trim().replaceAll(',', '.');
+    Navigator.of(context).pop(
+      _PlaceDraft(
+        name: _name.text.trim(),
+        area: areaText.isEmpty ? null : double.parse(areaText),
+        areaUnit: _areaUnit,
+        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.helperText != null) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(widget.helperText!),
+                ),
+                const SizedBox(height: 12),
+              ],
+              TextFormField(
+                controller: _name,
+                autofocus: true,
+                maxLength: 120,
+                decoration: InputDecoration(
+                  labelText: widget.nameLabel,
+                  border: const OutlineInputBorder(),
+                  counterText: '',
+                ),
+                validator: (value) =>
+                    (value?.trim().isNotEmpty ?? false) ? null : 'Укажи название.',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _area,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Площадь (необязательно)',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  final text = value?.trim().replaceAll(',', '.') ?? '';
+                  if (text.isEmpty) return null;
+                  final parsed = double.tryParse(text);
+                  if (parsed == null || parsed <= 0) return 'Введи число больше нуля.';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value: _areaUnit,
+                decoration: const InputDecoration(
+                  labelText: 'Единица площади',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'm2', child: Text('м² — квадратные метры')),
+                  DropdownMenuItem(value: 'ha', child: Text('га — гектары')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _areaUnit = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _notes,
+                maxLines: 3,
+                maxLength: 500,
+                decoration: const InputDecoration(
+                  labelText: 'Примечание (необязательно)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: _save,
+          child: const Text('Сохранить'),
+        ),
+      ],
     );
   }
 }
