@@ -284,6 +284,7 @@ class _OperationFormDialogState extends State<_OperationFormDialog> {
   String _quantityUnit = 'l';
   String _waterUnit = 'l';
   bool _busy = false;
+  bool _referencesReady = false;
   String? _error;
   late Future<void> _references;
   List<Map<String, dynamic>> _batches = [];
@@ -333,6 +334,7 @@ class _OperationFormDialogState extends State<_OperationFormDialog> {
     setState(() {
       _batches = batches.map((r) => Map<String, dynamic>.from(r)).toList();
       _products = products.map((r) => Map<String, dynamic>.from(r)).toList();
+      _referencesReady = true;
       if (_batches.isNotEmpty) _batchId = _value(_batches.first['id']);
       _syncProduct();
     });
@@ -551,7 +553,7 @@ class _OperationFormDialogState extends State<_OperationFormDialog> {
       actions: [
         TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(false), child: const Text('Отмена')),
         FilledButton(
-          onPressed: _busy || _references is Future<void> && _batches.isEmpty ? null : _save,
+          onPressed: _busy || !_referencesReady || _batches.isEmpty ? null : _save,
           child: _busy
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : const Text('Сохранить'),
