@@ -48,6 +48,13 @@ jobs:
         working-directory: app
         run: flutter create --platforms=android --org ru.teplitsapro .
 
+      - name: Apply FaezAgro Android branding
+        working-directory: app
+        run: |
+          mkdir -p android/app/src/main/res
+          cp -R tooling/android/res/* android/app/src/main/res/
+          sed -i 's/android:label="[^"]*"/android:label="ФаёзАгро"/' android/app/src/main/AndroidManifest.xml
+
       - name: Install Flutter dependencies
         working-directory: app
         run: flutter pub get
@@ -81,8 +88,8 @@ jobs:
         run: |
           TAG="android-test-${GITHUB_RUN_NUMBER}"
           APK="app/build/app/outputs/flutter-apk/app-debug.apk"
-          ASSET="TeplitsaPro-Android-debug.apk"
-          NOTES="Тестовая Android-сборка ТЕПЛИЦА PRO. Это debug APK для установки на собственный тестовый телефон. Не использовать для production."
+          ASSET="FaezAgro-Android-debug.apk"
+          NOTES="Тестовая Android-сборка ФаёзАгро. Это debug APK для установки на собственный тестовый телефон. Не использовать для production."
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; replacing its APK asset."
