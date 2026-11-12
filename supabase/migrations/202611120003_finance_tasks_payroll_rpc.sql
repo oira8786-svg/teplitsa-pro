@@ -15,13 +15,18 @@ language plpgsql
 security definer
 set search_path = pg_catalog, public
 as $$
-declare v_id uuid;
+declare
+  v_id uuid;
+  v_timezone text;
+  v_today date;
 begin
   if auth.uid() is null then raise exception 'Authentication required' using errcode = '42501'; end if;
   if not public.has_org_role(p_organization_id,array['owner','manager','accountant']::text[]) then
     raise exception 'Insufficient organization role' using errcode = '42501';
   end if;
-  if p_expense_date is null or p_expense_date > current_date then
+  select timezone into v_timezone from public.organizations where id=p_organization_id;
+  v_today := (now() at time zone coalesce(v_timezone,'Europe/Moscow'))::date;
+  if p_expense_date is null or p_expense_date > v_today then
     raise exception 'Expense date is invalid' using errcode = '22023';
   end if;
   if p_category not in ('seeds','fertilizers','plant_protection','utilities','rent','transport','repairs','payroll','packaging','other') then
