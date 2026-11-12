@@ -129,12 +129,12 @@ class _CropsState extends State<_Crops> {
         if (snap.hasError) { return _Retry(message: 'Не удалось загрузить культуры: ${snap.error}',
           retry: () => setState(() => future = load())); }
         final rows = snap.data ?? [];
-        if (rows.isEmpty) return RefreshIndicator(onRefresh: refresh, child: ListView(
+        if (rows.isEmpty) { return RefreshIndicator(onRefresh: refresh, child: ListView(
           physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(24),
           children: const [SizedBox(height: 70), Icon(Icons.grass_outlined, size: 56),
             SizedBox(height: 12), Text('Список культур пуст', textAlign: TextAlign.center),
             SizedBox(height: 8), Text('Добавь культуру, затем укажи её сорта.', textAlign: TextAlign.center)],
-        ));
+        )); }
         return RefreshIndicator(onRefresh: refresh, child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
           children: rows.map((c) => Card(child: ExpansionTile(
@@ -278,12 +278,12 @@ class _BatchesState extends State<_Batches> {
       if (snap.hasError) { return _Retry(message: 'Не удалось загрузить партии: ${snap.error}',
         retry: () => setState(() => future = load())); }
       final d = snap.data!;
-      if (d.batches.isEmpty) return RefreshIndicator(onRefresh: refresh,
+      if (d.batches.isEmpty) { return RefreshIndicator(onRefresh: refresh,
         child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(24),
           children: const [SizedBox(height: 70), Icon(Icons.spa_outlined, size: 56),
             SizedBox(height: 12), Text('Партий пока нет', textAlign: TextAlign.center),
             SizedBox(height: 8), Text('Создай партию после добавления культуры и теплицы.', textAlign: TextAlign.center)],
-        ));
+        )); }
       return RefreshIndicator(onRefresh: refresh, child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
         children: d.batches.map((b) {
@@ -449,9 +449,9 @@ class _ProductsState extends State<_Products> {
       if (snap.hasError) { return _Retry(message: 'Не удалось загрузить каталог: ${snap.error}',
         retry: () => setState(() => future = load())); }
       final rows = snap.data ?? [];
-      if (rows.isEmpty) return const Center(child: Padding(
+      if (rows.isEmpty) { return const Center(child: Padding(
         padding: EdgeInsets.all(24), child: Text('Каталог пуст. Здесь хранятся сведения о препаратах и удобрениях.'),
-      ));
+      )); }
       return ListView(padding: const EdgeInsets.fromLTRB(12, 12, 12, 88), children: [
         const Card(child: Padding(padding: EdgeInsets.all(12), child: Text(
           'Справочник хозяйства не подтверждает регистрацию средства и не заменяет действующую официальную инструкцию РФ. Дозировки и сроки безопасности здесь не рассчитываются.',
