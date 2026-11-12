@@ -56,6 +56,51 @@ jobs:
           cp -R tooling/android/res/* android/app/src/main/res/
           sed -i 's/android:label="[^"]*"/android:label="ТЕПЛИЦА PRO"/' android/app/src/main/AndroidManifest.xml
 
+      - name: Configure scheduled alarm notifications
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          xml = manifest.read_text()
+          permissions = """
+              <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+              <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+          """
+          if "android.permission.RECEIVE_BOOT_COMPLETED" not in xml:
+              xml = xml.replace("<application", permissions + "\n    <application", 1)
+          receivers = """
+                  <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
+                  <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+                      <intent-filter>
+                          <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                          <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                          <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                      </intent-filter>
+                  </receiver>
+          """
+          if "ScheduledNotificationReceiver" not in xml:
+              xml = xml.replace("</application>", receivers + "\n    </application>", 1)
+          manifest.write_text(xml)
+
+          gradle = Path("android/app/build.gradle.kts")
+          if gradle.exists():
+              text = gradle.read_text()
+              if "isCoreLibraryDesugaringEnabled" not in text:
+                  text = text.replace(
+                      "compileOptions {",
+                      'compileOptions {\n        isCoreLibraryDesugaringEnabled = true',
+                      1
+                  )
+              if "coreLibraryDesugaring(" not in text:
+                  text = text.replace(
+                      "dependencies {",
+                      'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")',
+                      1
+                  )
+              gradle.write_text(text)
+          PY
+
       - name: Validate SQL migration manifest
         run: python -m unittest discover -s supabase/tests -v
 
