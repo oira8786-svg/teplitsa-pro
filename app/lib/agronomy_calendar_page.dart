@@ -37,7 +37,9 @@ class _AgronomyCalendarPageState extends State<AgronomyCalendarPage> {
       final details = [crop, if (number.isNotEmpty) 'Партия $number', if (place.isNotEmpty) place].join(' • ');
       void add(String field, String title, IconData icon) {
         final raw = batch[field]?.toString();
-        if (raw == null) return;
+        if (raw == null) {
+          return;
+        }
         final date = DateTime.tryParse(raw);
         if (date == null || date.year != _month.year || date.month != _month.month) return;
         result.add(_CalendarEvent(date: date, title: title, details: details, icon: icon));
