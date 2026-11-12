@@ -5,12 +5,19 @@ import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OperationsHubPage extends StatelessWidget {
-  const OperationsHubPage({required this.organizationId, super.key});
+  const OperationsHubPage({
+    required this.organizationId,
+    this.initialTabIndex = 0,
+    super.key,
+  });
+
   final String organizationId;
+  final int initialTabIndex;
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
     length: 9,
+    initialIndex: initialTabIndex,
     child: Scaffold(
       appBar: AppBar(title: const Text('Рабочие разделы'),
         bottom: const TabBar(isScrollable: true, tabs: [
