@@ -34,6 +34,8 @@ end;
 $$;
 
 -- Only the audited verification RPC may change a treatment safety record.
+-- The source URL is reviewer-supplied evidence; this function does not crawl or
+-- independently certify the source host as an official government website.
 drop policy if exists safety_manage on public.treatment_safety;
 revoke insert, update, delete on public.treatment_safety from authenticated;
 
@@ -137,7 +139,7 @@ begin
     or v_registration_number is null
     or trim(v_registration_number) <> trim(p_registration_reference)
     or v_registration_valid_until is null
-    or v_registration_valid_until < current_date then
+    or v_registration_valid_until < (now() at time zone 'Europe/Moscow')::date then
     raise exception 'Product registration is missing, mismatched or expired for the Russian jurisdiction'
       using errcode = '23514';
   end if;
