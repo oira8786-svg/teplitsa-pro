@@ -319,8 +319,16 @@ class _BatchesState extends State<_Batches> {
       });
       if (mounted) { setState(() => future = load()); msg(context, 'Партия создана.'); }
     } on PostgrestException catch (e) {
-      if (mounted) msg(context, 'Не удалось создать партию: ${e.message}');
-    } catch (_) { if (mounted) msg(context, 'Не удалось создать партию.'); }
+      if (mounted) {
+        final details = e.details?.toString() ?? '';
+        final hint = e.hint?.toString() ?? '';
+        msg(context, 'Не удалось создать партию: ${e.message}'
+          '${details.isEmpty ? '' : ' — $details'}'
+          '${hint.isEmpty ? '' : ' Подсказка: $hint'}');
+      }
+    } catch (e) {
+      if (mounted) msg(context, 'Ошибка создания партии (${e.runtimeType}): $e');
+    }
   }
 
   @override
