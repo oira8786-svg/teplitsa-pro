@@ -7,6 +7,7 @@ import 'crop_batches_page.dart';
 import 'agronomy_calendar_page.dart';
 import 'agronomy_operations_page.dart';
 import 'operations_hub_page.dart';
+import 'reports_page.dart';
 
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabasePublishableKey =
@@ -47,14 +48,26 @@ class TeplitsaProApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ТЕПЛИЦА PRO',
+      title: 'ФаёзАгро',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF287A4B),
+          seedColor: const Color(0xFF087A3D),
           brightness: Brightness.light,
         ),
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF3F8F2),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF087A3D),
+          foregroundColor: Colors.white,
+          centerTitle: false,
+        ),
+        cardTheme: CardThemeData(
+          color: const Color(0xFFEAF5EA),
+          elevation: 1.5,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
+        ),
       ),
       home: initializationError != null
           ? _SimpleMessagePage(
@@ -217,10 +230,14 @@ class _AuthPageState extends State<AuthPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(Icons.eco_outlined, size: 48),
+                      Container(
+                        width: 76, height: 76,
+                        decoration: BoxDecoration(color: const Color(0xFF087A3D), borderRadius: BorderRadius.circular(24)),
+                        child: const Icon(Icons.eco_rounded, size: 48, color: Colors.white),
+                      ),
                       const SizedBox(height: 12),
                       Text(
-                        'ТЕПЛИЦА PRO',
+                        'ФаёзАгро',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.w800,
@@ -601,7 +618,8 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ТЕПЛИЦА PRO', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('ФаёзАгро', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.2)),
+        
         actions: [
           if (supabaseConfigured)
             IconButton(
@@ -627,6 +645,7 @@ class DashboardPage extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             children: [
               Card(
+                color: const Color(0xFF087A3D),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -634,17 +653,17 @@ class DashboardPage extends StatelessWidget {
                     children: [
                       Text(
                         organizationName ?? 'Панель управления',
-                        style: Theme.of(context).textTheme.headlineSmall,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                       ),
                       if (userEmail != null) ...[
                         const SizedBox(height: 6),
-                        Text(userEmail!, style: const TextStyle(color: Colors.black54)),
+                        Text(userEmail!, style: const TextStyle(color: Colors.white70)),
                         if (userRole != null)
-                          Text('Роль: $userRole', style: const TextStyle(color: Colors.black54)),
+                          Text('Роль: $userRole', style: const TextStyle(color: Colors.white70)),
                       ],
                       const SizedBox(height: 8),
                       const Text(
-                        'Учёт теплиц, выращивания, ресурсов, урожая и финансов в одном месте.',
+                        'Управление выращиванием, ресурсами, урожаем и финансами в одном месте.',
                       ),
                       const SizedBox(height: 12),
                       Chip(
@@ -659,15 +678,12 @@ class DashboardPage extends StatelessWidget {
                         ),
                       ),
                       const Text(
-                        'Это начальный экран. Разделы и операции будут подключаться поэтапно.',
-                        style: TextStyle(color: Colors.black54),
+                        'Ваше хозяйство под контролем. Планируйте, учитывайте, получайте результат.',
+                        style: TextStyle(color: Colors.white),
                       ),
                       if (!supabaseConfigured) ...[
                         const SizedBox(height: 8),
-                        const Text(
-                          'Работа с реальными данными пока не включена.',
-                          style: TextStyle(color: Colors.black54),
-                        ),
+                        const Text('Демо-режим: данные не сохраняются.', style: TextStyle(color: Colors.white70)),
                       ],
                     ],
                   ),
@@ -684,7 +700,7 @@ class DashboardPage extends StatelessWidget {
                   crossAxisCount: columns,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 1.08,
+                  childAspectRatio: 0.82,
                 ),
                 itemBuilder: (context, index) {
                   final module = modules[index];
@@ -754,6 +770,12 @@ class DashboardPage extends StatelessWidget {
                           );
                           return;
                         }
+                        if (index == 9 && organizationId != null) {
+                          Navigator.of(context).push(MaterialPageRoute<void>(
+                            builder: (_) => ReportsPage(organizationId: organizationId!),
+                          ));
+                          return;
+                        }
                         if (index >= 5 && index <= 8 && organizationId != null) {
                           final initialTabIndex = switch (index) {
                             5 => 0, // Склад
@@ -772,11 +794,9 @@ class DashboardPage extends StatelessWidget {
                           );
                           return;
                         }
-                        final message = index == 0
-                            ? 'Сначала войди в хозяйство, чтобы вести список теплиц.'
-                            : index == 1
-                                ? 'Сначала войди в хозяйство, чтобы вести культуры и партии.'
-                                : 'Раздел «${module.title}» будет подключён позже.';
+                        final message = !supabaseConfigured
+                            ? 'Войди в хозяйство, чтобы работать с разделом «${module.title}».'
+                            : 'Для этого раздела пока не настроен экран.';
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(message)),
                         );
