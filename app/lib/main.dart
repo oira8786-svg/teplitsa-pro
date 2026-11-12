@@ -1127,7 +1127,7 @@ class _PlaceFormDialogState extends State<_PlaceFormDialog> {
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
-                value: _areaUnit,
+                initialValue: _areaUnit,
                 decoration: const InputDecoration(
                   labelText: 'Единица площади',
                   border: OutlineInputBorder(),
