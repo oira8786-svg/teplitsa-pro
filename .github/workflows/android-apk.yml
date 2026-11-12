@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "app/**"
+      - "supabase/**"
       - ".github/workflows/android-apk.yml"
   workflow_dispatch:
 
@@ -48,7 +49,7 @@ jobs:
         working-directory: app
         run: flutter create --platforms=android --org ru.teplitsapro .
 
-      - name: Apply FaezAgro Android branding
+      - name: Apply ТЕПЛИЦА PRO Android branding
         working-directory: app
         run: |
           mkdir -p android/app/src/main/res
@@ -88,8 +89,8 @@ jobs:
         run: |
           TAG="android-test-${GITHUB_RUN_NUMBER}"
           APK="app/build/app/outputs/flutter-apk/app-debug.apk"
-          ASSET="FaezAgro-Android-debug.apk"
-          NOTES="Тестовая Android-сборка ФаёзАгро. Это debug APK для установки на собственный тестовый телефон. Не использовать для production."
+          ASSET="TeplitsaPro-Android-debug.apk"
+          NOTES="Тестовая Android-сборка ТЕПЛИЦА PRO. Это debug APK для установки на собственный тестовый телефон. Не использовать для production."
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; replacing its APK asset."
