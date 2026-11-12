@@ -38,7 +38,6 @@ class InventoryItemsPage extends StatefulWidget {
 
 class _InventoryItemsPageState extends State<InventoryItemsPage> {
   late Future<List<dynamic>> _future;
-  bool _busy = false;
 
   @override
   void initState() {
@@ -117,14 +116,14 @@ class _InventoryItemsPageState extends State<InventoryItemsPage> {
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Укажи название' : null),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: category,
+              initialValue: category,
               decoration: const InputDecoration(labelText: 'Категория'),
               items: _itemCategories.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
               onChanged: (v) => setDialog(() => category = v ?? category),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: unit,
+              initialValue: unit,
               decoration: const InputDecoration(labelText: 'Базовая единица'),
               items: _units.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
               onChanged: (v) => setDialog(() => unit = v ?? unit),
@@ -201,7 +200,7 @@ class _InventoryItemsPageState extends State<InventoryItemsPage> {
           padding: const EdgeInsets.all(12),
           children: [
             Wrap(spacing: 8, runSpacing: 8, children: [
-              FilledButton.icon(onPressed: _busy ? null : _createItem, icon: const Icon(Icons.add), label: const Text('Добавить позицию')),
+              FilledButton.icon(onPressed: _createItem, icon: const Icon(Icons.add), label: const Text('Добавить позицию')),
               OutlinedButton.icon(onPressed: _createWarehouse, icon: const Icon(Icons.warehouse_outlined), label: const Text('Новый склад')),
             ]),
             const SizedBox(height: 12),
@@ -281,7 +280,7 @@ class _InventoryMovementsPageState extends State<InventoryMovementsPage> {
           key: formKey,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             DropdownButtonFormField<String>(
-              value: type, decoration: const InputDecoration(labelText: 'Операция'),
+              initialValue: type, decoration: const InputDecoration(labelText: 'Операция'),
               items: const [
                 DropdownMenuItem(value: 'receipt', child: Text('Поступление')),
                 DropdownMenuItem(value: 'issue', child: Text('Выдача / расход')),
@@ -294,13 +293,13 @@ class _InventoryMovementsPageState extends State<InventoryMovementsPage> {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: itemId, decoration: const InputDecoration(labelText: 'Позиция'),
+              initialValue: itemId, decoration: const InputDecoration(labelText: 'Позиция'),
               items: items.map((e) => DropdownMenuItem(value: e['id'].toString(), child: Text(e['name'].toString(), overflow: TextOverflow.ellipsis))).toList(),
               onChanged: (v) => setDialog(() => itemId = v ?? itemId),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: warehouseId, decoration: const InputDecoration(labelText: 'Склад'),
+              initialValue: warehouseId, decoration: const InputDecoration(labelText: 'Склад'),
               items: warehouses.map((e) => DropdownMenuItem(value: e['id'].toString(), child: Text(e['name'].toString(), overflow: TextOverflow.ellipsis))).toList(),
               onChanged: (v) => setDialog(() => warehouseId = v ?? warehouseId),
             ),
