@@ -1,3 +1,4 @@
+import 'harvest_sales_pages.dart';
 import 'inventory_pages.dart';
 // The following style-only lints are handled in a later formatting pass.
 // ignore_for_file: curly_braces_in_flow_control_structures, prefer_interpolation_to_compose_strings
@@ -35,9 +36,9 @@ class OperationsHubPage extends StatelessWidget {
       body: TabBarView(children: [
         InventoryItemsPage(organizationId: organizationId),
         InventoryMovementsPage(organizationId: organizationId),
-        _RecordList(org: organizationId, table: 'harvest_lots', columns: 'lot_number,harvested_at,quantity,unit,grade,status,storage_location', titleField: 'lot_number'),
+        HarvestPage(organizationId: organizationId),
         _RecordList(org: organizationId, table: 'customers', columns: 'name,phone,email,address', titleField: 'name'),
-        _RecordList(org: organizationId, table: 'sales', columns: 'sale_number,sold_at,status,currency,notes', titleField: 'sale_number'),
+        SalesPage(organizationId: organizationId),
         _RecordList(org: organizationId, table: 'payments', columns: 'amount,currency,payment_method,paid_at,reference_number', titleField: 'reference_number'),
         _RecordList(org: organizationId, table: 'expenses', columns: 'expense_date,category,description,amount,currency,document_number', titleField: 'description'),
         _TeamList(org: organizationId),
