@@ -53,7 +53,7 @@ class _ReportsPageState extends State<ReportsPage> {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.cloud_off_outlined, size: 44),
               const SizedBox(height: 12),
-              Text('Не удалось сформировать отчёт: \${snapshot.error}', textAlign: TextAlign.center),
+              Text('Не удалось сформировать отчёт: ${snapshot.error}', textAlign: TextAlign.center),
               const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: () => setState(() => _future = _load()),
@@ -64,13 +64,13 @@ class _ReportsPageState extends State<ReportsPage> {
         }
         final d = snapshot.data!;
         final cards = <(String, String, IconData)>[
-          ('Теплицы', '\${d['greenhouses']}', Icons.warehouse_outlined),
-          ('Партии растений', '\${d['batches']}', Icons.grass_outlined),
-          ('Партии урожая', '\${d['harvestLots']}', Icons.agriculture_outlined),
-          ('Собрано всего', '\${(d['harvestQuantity'] as num).toStringAsFixed(2)}', Icons.scale_outlined),
-          ('Продажи', '\${d['sales']}', Icons.point_of_sale_outlined),
-          ('Позиции склада', '\${d['inventory']}', Icons.inventory_2_outlined),
-          ('Учтённые расходы, ₽', '\${(d['expenses'] as num).toStringAsFixed(2)}', Icons.receipt_long_outlined),
+          ('Теплицы', '${d['greenhouses']}', Icons.warehouse_outlined),
+          ('Партии растений', '${d['batches']}', Icons.grass_outlined),
+          ('Партии урожая', '${d['harvestLots']}', Icons.agriculture_outlined),
+          ('Собрано всего', '${(d['harvestQuantity'] as num).toStringAsFixed(2)}', Icons.scale_outlined),
+          ('Продажи', '${d['sales']}', Icons.point_of_sale_outlined),
+          ('Позиции склада', '${d['inventory']}', Icons.inventory_2_outlined),
+          ('Учтённые расходы, ₽', '${(d['expenses'] as num).toStringAsFixed(2)}', Icons.receipt_long_outlined),
         ];
         return RefreshIndicator(
           onRefresh: () async { final next = _load(); setState(() => _future = next); await next; },
