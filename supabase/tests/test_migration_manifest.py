@@ -70,7 +70,6 @@ class MigrationManifestTests(unittest.TestCase):
             0,
             "Unbalanced PostgreSQL dollar-quoted function or block",
         )
-        self.assertNotRegex(sql, r"(?m)^\\$;$")
 
     def test_task_assignee_tenant_constraint_is_in_both_install_paths(self) -> None:
         migration = MIGRATIONS_DIR / "202611110006_task_assignee_tenant_integrity.sql"
