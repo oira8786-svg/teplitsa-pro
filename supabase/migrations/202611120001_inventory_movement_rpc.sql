@@ -75,6 +75,13 @@ begin
   end if;
 
   if not exists (
+    select 1 from public.measurement_units u
+    where u.code = v_base_unit and u.dimension in ('count','mass','volume')
+  ) then
+    raise exception 'Inventory item has an unsupported base unit' using errcode = '22023';
+  end if;
+
+  if not exists (
     select 1 from public.warehouses w
     where w.id = p_warehouse_id
       and w.organization_id = p_organization_id
