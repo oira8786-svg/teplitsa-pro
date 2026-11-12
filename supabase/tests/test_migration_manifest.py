@@ -91,6 +91,7 @@ class MigrationManifestTests(unittest.TestCase):
         for required in (
             "verify_treatment_safety",
             "registration_country",
+            "registration_status",
             "registration_valid_until",
             "source_url",
             "source_checked_at",
