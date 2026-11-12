@@ -29,7 +29,7 @@ class _AgronomyCalendarPageState extends State<AgronomyCalendarPage> {
   String _dateLabel(DateTime date) => '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
 
   int _reminderId(_CalendarEvent event) {
-    final key = widget.organizationId + '|' + event.date.toIso8601String() + '|' + event.title + '|' + event.details;
+    final key = '${widget.organizationId}|${event.date.toIso8601String()}|${event.title}|${event.details}';
     var hash = 0x811c9dc5;
     for (final unit in key.codeUnits) {
       hash = ((hash ^ unit) * 0x01000193) & 0x7fffffff;
@@ -50,10 +50,10 @@ class _AgronomyCalendarPageState extends State<AgronomyCalendarPage> {
     try {
       await CalendarReminderService.instance.schedule(id: _reminderId(event), title: event.title, body: event.details, at: at);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Звуковое напоминание установлено на ' + _dateLabel(at) + ' в ' + picked.format(context))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Звуковое напоминание установлено на ${_dateLabel(at)} в ${picked.format(context)}')));
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось установить напоминание: ' + error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Не удалось установить напоминание: $error')));
     }
   }
 
