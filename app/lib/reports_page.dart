@@ -54,7 +54,8 @@ class _ReportsPageState extends State<ReportsPage> {
     var revenue = 0.0;
     for (final row in (rows[4] as List)) {
       final lineTotal = _number(row['quantity']) * _number(row['unit_price']);
-      revenue += (lineTotal - _number(row['discount'])).clamp(0, double.infinity);
+      revenue += (lineTotal - _number(row['discount']))
+          .clamp(0, double.infinity).toDouble();
     }
     final paid = (rows[5] as List).fold<double>(
       0, (sum, row) => sum + _number(row['amount']));
@@ -93,7 +94,7 @@ class _ReportsPageState extends State<ReportsPage> {
       'sales': (rows[3] as List).length,
       'revenue': revenue,
       'paid': paid,
-      'receivable': (revenue - paid).clamp(0, double.infinity),
+      'receivable': (revenue - paid).clamp(0, double.infinity).toDouble(),
       'expenses': expenses,
       'inventory': (rows[7] as List).length,
       'lowStock': lowStock,
