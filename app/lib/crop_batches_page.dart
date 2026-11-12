@@ -78,19 +78,17 @@ class _CropsState extends State<_Crops> {
 
   Future<List<Map<String, dynamic>>> load() async {
     final db = Supabase.instance.client;
-    final crops = await db.from('crops').select('id,name,category,notes')
-      .eq('organization_id', widget.org).eq('active', true).order('name');
-    final varieties = await db.from('crop_varieties').select('id,crop_id,name,supplier')
-      .eq('organization_id', widget.org).order('name');
+    final crops = _mapRows(await db.from('crops').select('id,name,category,notes')
+      .eq('organization_id', widget.org).eq('active', true).order('name'));
+    final varieties = _mapRows(await db.from('crop_varieties').select('id,crop_id,name,supplier')
+      .eq('organization_id', widget.org).order('name'));
     final grouped = <String, List<Map<String, dynamic>>>{};
-    for (final item in varieties) {
-      final v = Map<String, dynamic>.from(item);
-      grouped.putIfAbsent(s(v['crop_id']), () => []).add(v);
+    for (final variety in varieties) {
+      grouped.putIfAbsent(s(variety['crop_id']), () => []).add(variety);
     }
-    return crops.map((item) {
-      final c = Map<String, dynamic>.from(item);
-      c['varieties'] = grouped[s(c['id'])] ?? [];
-      return c;
+    return crops.map((crop) => <String, dynamic>{
+      ...crop,
+      'varieties': grouped[s(crop['id'])] ?? <Map<String, dynamic>>[],
     }).toList();
   }
   Future<void> refresh() async { setState(() => future = load()); await future; }
@@ -279,15 +277,18 @@ class _BatchesState extends State<_Batches> {
   void initState() { super.initState(); future = load(); }
   Future<_BatchData> load() async {
     final db = Supabase.instance.client;
-    final r = await Future.wait([
-      db.from('crops').select('id,name').eq('organization_id', widget.org).eq('active', true).order('name'),
-      db.from('crop_varieties').select('id,crop_id,name').eq('organization_id', widget.org).order('name'),
-      db.from('greenhouses').select('id,name').eq('organization_id', widget.org).eq('active', true).order('name'),
-      db.from('greenhouse_zones').select('id,greenhouse_id,name').eq('organization_id', widget.org).eq('active', true).order('name'),
-      db.from('batches').select('id,batch_number,greenhouse_id,zone_id,crop_id,variety_id,sowing_date,planting_date,planned_harvest_date,quantity_planted,quantity_unit,status,notes').eq('organization_id', widget.org).order('created_at', ascending: false),
-    ]);
-    List<Map<String, dynamic>> map(dynamic rows) => rows.map((e) => Map<String, dynamic>.from(e)).toList();
-    return _BatchData(map(r[0]), map(r[1]), map(r[2]), map(r[3]), map(r[4]));
+    final crops = _mapRows(await db.from('crops').select('id,name')
+      .eq('organization_id', widget.org).eq('active', true).order('name'));
+    final varieties = _mapRows(await db.from('crop_varieties').select('id,crop_id,name')
+      .eq('organization_id', widget.org).order('name'));
+    final greenhouses = _mapRows(await db.from('greenhouses').select('id,name')
+      .eq('organization_id', widget.org).eq('active', true).order('name'));
+    final zones = _mapRows(await db.from('greenhouse_zones').select('id,greenhouse_id,name')
+      .eq('organization_id', widget.org).eq('active', true).order('name'));
+    final batches = _mapRows(await db.from('batches')
+      .select('id,batch_number,greenhouse_id,zone_id,crop_id,variety_id,sowing_date,planting_date,planned_harvest_date,quantity_planted,quantity_unit,status,notes')
+      .eq('organization_id', widget.org).order('created_at', ascending: false));
+    return _BatchData(crops, varieties, greenhouses, zones, batches);
   }
   Future<void> refresh() async { setState(() => future = load()); await future; }
 
@@ -504,7 +505,7 @@ class _ProductsState extends State<_Products> {
     final rows = await Supabase.instance.client.from('agricultural_products')
       .select('id,name,category,manufacturer,active_ingredient,registration_number,registration_valid_until,safety_instructions')
       .eq('organization_id', widget.org).order('name');
-    return rows.map((e) => Map<String, dynamic>.from(e)).toList();
+    return _mapRows(rows);
   }
   Future<void> add() async {
     final draft = await showDialog<Map<String, dynamic>>(context: context, builder: (_) => const _ProductForm());
