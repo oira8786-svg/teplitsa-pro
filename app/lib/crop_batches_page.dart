@@ -511,7 +511,7 @@ class _ProductsState extends State<_Products> {
   void initState() { super.initState(); future = load(); }
   Future<List<Map<String, dynamic>>> load() async {
     final rows = await Supabase.instance.client.from('agricultural_products')
-      .select('id,name,category,manufacturer,active_ingredient,registration_number,registration_valid_until,safety_instructions')
+      .select('id,name,category,manufacturer,active_ingredient,registration_country,registration_number,registration_status,registration_valid_until,safety_instructions')
       .eq('organization_id', widget.org).order('name');
     return _mapRows(rows);
   }
@@ -548,7 +548,15 @@ class _ProductsState extends State<_Products> {
           children: [
             _Info('Производитель', s(p['manufacturer']).isEmpty ? '—' : s(p['manufacturer'])),
             _Info('Действующее вещество', s(p['active_ingredient']).isEmpty ? '—' : s(p['active_ingredient'])),
+            _Info('Страна регистрации', s(p['registration_country']).isEmpty ? '—' : s(p['registration_country'])),
             _Info('Регистрационный номер', s(p['registration_number']).isEmpty ? '—' : s(p['registration_number'])),
+            _Info('Статус регистрации', switch (s(p['registration_status'])) {
+              'active' => 'Действует (внесено вручную)',
+              'suspended' => 'Приостановлена',
+              'cancelled' => 'Аннулирована',
+              'expired' => 'Истекла',
+              _ => 'Не проверена',
+            }),
             _Info('Регистрация до', dateText(p['registration_valid_until'])),
             if (s(p['safety_instructions']).isNotEmpty) _Info('Примечание', s(p['safety_instructions'])),
           ],
@@ -567,6 +575,7 @@ class _ProductFormState extends State<_ProductForm> {
     ingredient = TextEditingController(), registration = TextEditingController(),
     validUntil = TextEditingController(), note = TextEditingController();
   String category = 'chemical_fertilizer';
+  String registrationStatus = 'unknown';
   @override
   void dispose() {
     name.dispose(); manufacturer.dispose(); ingredient.dispose(); registration.dispose();
@@ -592,6 +601,23 @@ class _ProductFormState extends State<_ProductForm> {
       TextField(controller: ingredient, decoration: const InputDecoration(labelText: 'Действующее вещество')),
       TextField(controller: registration, decoration: const InputDecoration(labelText: 'Регистрационный номер РФ')),
       TextField(controller: validUntil, decoration: const InputDecoration(labelText: 'Регистрация до (ГГГГ-ММ-ДД)')),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        isExpanded: true,
+        initialValue: registrationStatus,
+        decoration: const InputDecoration(
+          labelText: 'Статус регистрации РФ',
+          helperText: 'Отметка вводится вручную после проверки официального реестра.',
+        ),
+        items: const [
+          DropdownMenuItem(value: 'unknown', child: Text('Не проверена')),
+          DropdownMenuItem(value: 'active', child: Text('Действует')),
+          DropdownMenuItem(value: 'suspended', child: Text('Приостановлена')),
+          DropdownMenuItem(value: 'cancelled', child: Text('Аннулирована')),
+          DropdownMenuItem(value: 'expired', child: Text('Истекла')),
+        ],
+        onChanged: (value) => setState(() => registrationStatus = value ?? 'unknown'),
+      ),
       TextField(controller: note, maxLines: 2, decoration: const InputDecoration(labelText: 'Примечание / источник инструкции')),
       const SizedBox(height: 8),
       const Text('Не указывай неподтверждённые нормы, дозировки или сроки ожидания.', style: TextStyle(fontSize: 12)),
@@ -600,13 +626,17 @@ class _ProductFormState extends State<_ProductForm> {
       TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
       FilledButton(onPressed: () {
         final valid = validUntil.text.trim();
-        if (name.text.trim().isEmpty || (valid.isNotEmpty && DateTime.tryParse(valid) == null)) return;
+        if (name.text.trim().isEmpty ||
+            (valid.isNotEmpty && DateTime.tryParse(valid) == null) ||
+            (registrationStatus == 'active' &&
+                (registration.text.trim().isEmpty || valid.isEmpty))) return;
         Navigator.pop(context, {
           'name': name.text.trim(), 'category': category,
           'manufacturer': manufacturer.text.trim().isEmpty ? null : manufacturer.text.trim(),
           'active_ingredient': ingredient.text.trim().isEmpty ? null : ingredient.text.trim(),
           'registration_country': registration.text.trim().isEmpty ? null : 'RU',
           'registration_number': registration.text.trim().isEmpty ? null : registration.text.trim(),
+          'registration_status': registration.text.trim().isEmpty ? 'unknown' : registrationStatus,
           'registration_valid_until': valid.isEmpty ? null : valid,
           'safety_instructions': note.text.trim().isEmpty ? null : note.text.trim(),
         });
