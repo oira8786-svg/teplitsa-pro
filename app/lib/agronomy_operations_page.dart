@@ -3,6 +3,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'treatment_safety_verification_dialog.dart';
+
 const _operationNames = <String, String>{
   'watering': 'Полив',
   'fertilizing': 'Внесение удобрения',
@@ -78,7 +80,7 @@ class _AgronomyOperationsPageState extends State<AgronomyOperationsPage> {
   Future<List<Map<String, dynamic>>> _load() async {
     final rows = await Supabase.instance.client
         .from('agronomy_operations')
-        .select('id,operation_type,performed_at,quantity,quantity_unit,water_volume,water_volume_unit,result,notes,batches(batch_number,crops(name),greenhouses(name),greenhouse_zones(name)),agricultural_products(name),treatment_safety(verification_status,harvest_wait_until,reentry_allowed_from)')
+        .select('id,operation_type,performed_at,quantity,quantity_unit,water_volume,water_volume_unit,result,notes,batches(batch_number,crops(name),greenhouses(name),greenhouse_zones(name)),agricultural_products(name,registration_country,registration_number,registration_status,registration_valid_until),treatment_safety(verification_status,harvest_wait_until,reentry_allowed_from,registration_reference,crop_and_site_scope,label_version,source_url,source_checked_at,harvest_wait_minutes,reentry_wait_minutes,verified_at,verified_by,notes,label_review_attested,scope_review_attested,intervals_review_attested)')
         .eq('organization_id', widget.organizationId)
         .order('performed_at', ascending: false)
         .limit(200);
@@ -100,6 +102,43 @@ class _AgronomyOperationsPageState extends State<AgronomyOperationsPage> {
       ),
     );
     if (created == true && mounted) {
+      setState(() => _future = _load());
+    }
+  }
+
+  Future<void> _verifySafety(Map<String, dynamic> row) async {
+    final safetyRaw = row['treatment_safety'];
+    final safety = safetyRaw is List && safetyRaw.isNotEmpty
+        ? safetyRaw.first as Map
+        : safetyRaw is Map
+            ? safetyRaw
+            : null;
+    if (safety == null) return;
+
+    final batch = row['batches'] is Map ? row['batches'] as Map : const {};
+    final crop = batch['crops'] is Map ? batch['crops'] as Map : const {};
+    final greenhouse = batch['greenhouses'] is Map ? batch['greenhouses'] as Map : const {};
+    final zone = batch['greenhouse_zones'] is Map ? batch['greenhouse_zones'] as Map : const {};
+    final product = row['agricultural_products'] is Map
+        ? row['agricultural_products'] as Map
+        : const {};
+
+    final verified = await showDialog<bool>(
+      context: context,
+      builder: (_) => TreatmentSafetyVerificationDialog(
+        organizationId: widget.organizationId,
+        operationId: _value(row['id']),
+        productName: _value(product['name']),
+        registrationCountry: product['registration_country']?.toString(),
+        registrationNumber: product['registration_number']?.toString(),
+        registrationStatus: product['registration_status']?.toString(),
+        registrationValidUntil: product['registration_valid_until']?.toString(),
+        cropName: _value(crop['name']),
+        greenhouseName: _value(greenhouse['name']),
+        zoneName: _value(zone['name']),
+      ),
+    );
+    if (verified == true && mounted) {
       setState(() => _future = _load());
     }
   }
@@ -182,7 +221,11 @@ class _AgronomyOperationsPageState extends State<AgronomyOperationsPage> {
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
               itemCount: rows.length,
-              itemBuilder: (context, index) => _OperationCard(row: rows[index]),
+              itemBuilder: (context, index) => _OperationCard(
+                row: rows[index],
+                canVerify: widget.canManage,
+                onVerify: () => _verifySafety(rows[index]),
+              ),
             ),
           );
         },
@@ -192,8 +235,15 @@ class _AgronomyOperationsPageState extends State<AgronomyOperationsPage> {
 }
 
 class _OperationCard extends StatelessWidget {
-  const _OperationCard({required this.row});
+  const _OperationCard({
+    required this.row,
+    required this.canVerify,
+    required this.onVerify,
+  });
+
   final Map<String, dynamic> row;
+  final bool canVerify;
+  final VoidCallback onVerify;
 
   @override
   Widget build(BuildContext context) {
@@ -250,19 +300,55 @@ class _OperationCard extends StatelessWidget {
             if (safety != null) ...[
               const SizedBox(height: 8),
               const Divider(),
-              const Row(
-                children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                  SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Безопасность не подтверждена. Срок ожидания до сбора и повторного входа нужно проверить по официальной инструкции.',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+              if (_value(safety['verification_status']) == 'verified') ...[
+                const Row(
+                  children: [
+                    Icon(Icons.verified_outlined, color: Colors.green),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Проверка записана ответственным специалистом',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                Text('По проверенной записи ожидание до сбора: ${_localDate(safety['harvest_wait_until'])}'),
+                Text('Повторный вход по записи разрешён с: ${_localDate(safety['reentry_allowed_from'])}'),
+                if (_value(safety['label_version']).isNotEmpty)
+                  Text('Этикетка: ${_value(safety['label_version'])}'),
+                if (_value(safety['source_url']).isNotEmpty)
+                  Text('Источник: ${_value(safety['source_url'])}'),
+              ] else ...[
+                const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Безопасность не подтверждена. До проверки действующей регистрации и этикетки не считай сбор урожая или вход работников разрешённым.',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                Text('Статус проверки: ${_value(safety['verification_status'])}'),
+              ],
+              if (canVerify) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: onVerify,
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: Text(
+                      _value(safety['verification_status']) == 'verified'
+                          ? 'Проверить повторно'
+                          : 'Проверить по инструкции',
                     ),
                   ),
-                ],
-              ),
-              Text('Статус проверки: ${_value(safety['verification_status'])}'),
+                ),
+              ],
             ],
           ],
         ),
