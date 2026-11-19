@@ -47,9 +47,10 @@ List<Map<String, dynamic>> _asMapRows(dynamic value) {
 String _localDate(dynamic value) {
   final parsed = DateTime.tryParse(_value(value));
   if (parsed == null) return '—';
-  final local = parsed.toLocal();
-  return '${local.day.toString().padLeft(2, '0')}.${local.month.toString().padLeft(2, '0')}.${local.year} '
-      '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  // All greenhouse operations and safety intervals use the farm timezone.
+  final moscow = parsed.toUtc().add(const Duration(hours: 3));
+  return '${moscow.day.toString().padLeft(2, '0')}.${moscow.month.toString().padLeft(2, '0')}.${moscow.year} '
+      '${moscow.hour.toString().padLeft(2, '0')}:${moscow.minute.toString().padLeft(2, '0')} МСК';
 }
 
 class AgronomyOperationsPage extends StatefulWidget {
