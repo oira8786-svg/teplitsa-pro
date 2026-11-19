@@ -647,6 +647,15 @@ class _ProductFormState extends State<_ProductForm> {
           setState(() => _error = 'Для статуса «действует» нужны номер и срок регистрации РФ.');
           return;
         }
+        if (registrationStatus == 'active') {
+          final expiry = DateTime.parse(valid);
+          final moscowNow = DateTime.now().toUtc().add(const Duration(hours: 3));
+          final moscowToday = DateTime(moscowNow.year, moscowNow.month, moscowNow.day);
+          if (DateTime(expiry.year, expiry.month, expiry.day).isBefore(moscowToday)) {
+            setState(() => _error = 'Срок регистрации уже истёк. Не устанавливай статус «действует».');
+            return;
+          }
+        }
         Navigator.pop(context, {
           'name': name.text.trim(), 'category': category,
           'manufacturer': manufacturer.text.trim().isEmpty ? null : manufacturer.text.trim(),
