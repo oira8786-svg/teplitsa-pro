@@ -576,6 +576,7 @@ class _ProductFormState extends State<_ProductForm> {
     validUntil = TextEditingController(), note = TextEditingController();
   String category = 'chemical_fertilizer';
   String registrationStatus = 'unknown';
+  String? _error;
   @override
   void dispose() {
     name.dispose(); manufacturer.dispose(); ingredient.dispose(); registration.dispose();
@@ -619,6 +620,13 @@ class _ProductFormState extends State<_ProductForm> {
         onChanged: (value) => setState(() => registrationStatus = value ?? 'unknown'),
       ),
       TextField(controller: note, maxLines: 2, decoration: const InputDecoration(labelText: 'Примечание / источник инструкции')),
+      if (_error != null) ...[
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ),
+      ],
       const SizedBox(height: 8),
       const Text('Не указывай неподтверждённые нормы, дозировки или сроки ожидания.', style: TextStyle(fontSize: 12)),
     ]))),
@@ -626,10 +634,19 @@ class _ProductFormState extends State<_ProductForm> {
       TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
       FilledButton(onPressed: () {
         final valid = validUntil.text.trim();
-        if (name.text.trim().isEmpty ||
-            (valid.isNotEmpty && DateTime.tryParse(valid) == null) ||
-            (registrationStatus == 'active' &&
-                (registration.text.trim().isEmpty || valid.isEmpty))) return;
+        if (name.text.trim().isEmpty) {
+          setState(() => _error = 'Укажи название средства.');
+          return;
+        }
+        if (valid.isNotEmpty && DateTime.tryParse(valid) == null) {
+          setState(() => _error = 'Дата регистрации должна быть в формате ГГГГ-ММ-ДД.');
+          return;
+        }
+        if (registrationStatus == 'active' &&
+            (registration.text.trim().isEmpty || valid.isEmpty)) {
+          setState(() => _error = 'Для статуса «действует» нужны номер и срок регистрации РФ.');
+          return;
+        }
         Navigator.pop(context, {
           'name': name.text.trim(), 'category': category,
           'manufacturer': manufacturer.text.trim().isEmpty ? null : manufacturer.text.trim(),
