@@ -316,6 +316,8 @@ class _OperationCard extends StatelessWidget {
                 ),
                 Text('По проверенной записи ожидание до сбора: ${_localDate(safety['harvest_wait_until'])}'),
                 Text('Повторный вход по записи разрешён с: ${_localDate(safety['reentry_allowed_from'])}'),
+                Text('Подтверждение записано: ${_localDate(safety['verified_at'])}'),
+                Text('Источник проверен: ${_localDate(safety['source_checked_at'])}'),
                 if (_value(safety['label_version']).isNotEmpty)
                   Text('Этикетка: ${_value(safety['label_version'])}'),
                 if (_value(safety['source_url']).isNotEmpty)
