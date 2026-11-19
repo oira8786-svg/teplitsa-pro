@@ -66,7 +66,8 @@ class _TreatmentSafetyVerificationDialogState
 
   String _dateText(DateTime? value) {
     if (value == null) return 'не указана';
-    return '${value.day.toString().padLeft(2, '0')}.${value.month.toString().padLeft(2, '0')}.${value.year}';
+    final moscow = value.toUtc().add(const Duration(hours: 3));
+    return '${moscow.day.toString().padLeft(2, '0')}.${moscow.month.toString().padLeft(2, '0')}.${moscow.year}';
   }
 
   @override
@@ -94,13 +95,14 @@ class _TreatmentSafetyVerificationDialogState
   }
 
   Future<void> _chooseSourceDate() async {
-    final now = DateTime.now();
+    final moscowNow = DateTime.now().toUtc().add(const Duration(hours: 3));
+    final initialMoscow = _sourceCheckedAt.toUtc().add(const Duration(hours: 3));
     final selected = await showDatePicker(
       context: context,
-      initialDate: _sourceCheckedAt,
+      initialDate: DateTime(initialMoscow.year, initialMoscow.month, initialMoscow.day),
       firstDate: DateTime(2000),
-      lastDate: DateTime(now.year, now.month, now.day),
-      helpText: 'Когда проверен источник',
+      lastDate: DateTime(moscowNow.year, moscowNow.month, moscowNow.day),
+      helpText: 'Когда проверен источник (время Москвы)',
     );
     if (selected != null && mounted) {
       setState(() {
