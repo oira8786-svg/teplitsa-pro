@@ -54,8 +54,9 @@ class _TreatmentSafetyVerificationDialogState
   bool get _registrationReady {
     final expiry = _registrationExpiry;
     final number = widget.registrationNumber?.trim() ?? '';
-    final today = DateTime.now();
-    final localToday = DateTime(today.year, today.month, today.day);
+    // The farm's business timezone is Europe/Moscow (UTC+03:00).
+    final moscowNow = DateTime.now().toUtc().add(const Duration(hours: 3));
+    final localToday = DateTime(moscowNow.year, moscowNow.month, moscowNow.day);
     return widget.registrationCountry?.trim().toUpperCase() == 'RU' &&
         widget.registrationStatus == 'active' &&
         number.isNotEmpty &&
