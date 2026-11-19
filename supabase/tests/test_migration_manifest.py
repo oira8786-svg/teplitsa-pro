@@ -148,10 +148,12 @@ class MigrationManifestTests(unittest.TestCase):
     def test_flutter_safety_review_form_calls_the_attested_rpc(self) -> None:
         dialog = ROOT / "app" / "lib" / "treatment_safety_verification_dialog.dart"
         operations_page = ROOT / "app" / "lib" / "agronomy_operations_page.dart"
+        product_catalog = ROOT / "app" / "lib" / "crop_batches_page.dart"
         self.assertTrue(dialog.is_file(), "Treatment safety review form is missing")
 
         dialog_source = dialog.read_text(encoding="utf-8")
         page_source = operations_page.read_text(encoding="utf-8")
+        catalog_source = product_catalog.read_text(encoding="utf-8")
         for required in (
             "verify_treatment_safety",
             "p_label_review_attested",
@@ -164,6 +166,8 @@ class MigrationManifestTests(unittest.TestCase):
                 self.assertIn(required, dialog_source)
         self.assertIn("TreatmentSafetyVerificationDialog", page_source)
         self.assertIn("canVerify: widget.canManage", page_source)
+        self.assertIn("'registration_status':", catalog_source)
+        self.assertIn("DropdownMenuItem(value: 'active'", catalog_source)
 
 
 if __name__ == "__main__":
