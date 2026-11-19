@@ -119,5 +119,52 @@ class MigrationManifestTests(unittest.TestCase):
         self.assertIn("verify_treatment_safety", bundle_sql)
 
 
+    def test_treatment_safety_verification_requires_explicit_attestations(self) -> None:
+        migration_name = "202611190001_treatment_safety_attestation.sql"
+        migration = MIGRATIONS_DIR / migration_name
+        self.assertTrue(migration.is_file(), "Treatment safety attestation migration is missing")
+        migration_sql = migration.read_text(encoding="utf-8")
+        bundle_sql = INSTALL_BUNDLE.read_text(encoding="utf-8")
+
+        for required in (
+            "treatment_safety_verified_requires_attestations",
+            "p_label_review_attested boolean",
+            "p_scope_review_attested boolean",
+            "p_intervals_review_attested boolean",
+            "p_label_review_attested is not true",
+            "p_scope_review_attested is not true",
+            "p_intervals_review_attested is not true",
+            "treatment_safety.verified",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, migration_sql)
+
+        self.assertIn(
+            f"-- SOURCE: supabase/migrations/{migration_name}",
+            bundle_sql,
+        )
+        self.assertIn("p_intervals_review_attested", bundle_sql)
+
+    def test_flutter_safety_review_form_calls_the_attested_rpc(self) -> None:
+        dialog = ROOT / "app" / "lib" / "treatment_safety_verification_dialog.dart"
+        operations_page = ROOT / "app" / "lib" / "agronomy_operations_page.dart"
+        self.assertTrue(dialog.is_file(), "Treatment safety review form is missing")
+
+        dialog_source = dialog.read_text(encoding="utf-8")
+        page_source = operations_page.read_text(encoding="utf-8")
+        for required in (
+            "verify_treatment_safety",
+            "p_label_review_attested",
+            "p_scope_review_attested",
+            "p_intervals_review_attested",
+            "p_harvest_wait_minutes",
+            "p_reentry_wait_minutes",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, dialog_source)
+        self.assertIn("TreatmentSafetyVerificationDialog", page_source)
+        self.assertIn("canVerify: widget.canManage", page_source)
+
+
 if __name__ == "__main__":
     unittest.main()
