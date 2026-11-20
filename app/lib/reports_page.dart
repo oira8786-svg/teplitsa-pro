@@ -64,6 +64,40 @@ class _ReportsPageState extends State<ReportsPage> {
     final expenses = (rows[6] as List).fold<double>(
       0, (sum, row) => sum + _number(row['amount']));
 
+    // Payroll is visible only to owner, manager and accountant roles.
+    Map<String, double>? payrollSummary;
+    final canViewPayroll = await db.rpc('has_org_role', params: {
+      'p_org': widget.organizationId,
+      'p_roles': ['owner', 'manager', 'accountant'],
+    });
+    if (canViewPayroll == true) {
+      final payrollRows = await Future.wait([
+        db.from('payroll_accruals').select('accrual_type,amount')
+            .eq('organization_id', widget.organizationId),
+        db.from('payroll_payments').select('amount')
+            .eq('organization_id', widget.organizationId),
+      ]);
+      var accrued = 0.0;
+      var deductions = 0.0;
+      for (final row in (payrollRows[0] as List)) {
+        final amount = _number(row['amount']);
+        if (row['accrual_type'] == 'deduction') {
+          deductions += amount;
+        } else {
+          accrued += amount;
+        }
+      }
+      final payrollPaid = (payrollRows[1] as List).fold<double>(
+        0, (sum, row) => sum + _number(row['amount']));
+      payrollSummary = {
+        'accrued': accrued,
+        'deductions': deductions,
+        'paid': payrollPaid,
+        'due': (accrued - deductions - payrollPaid)
+            .clamp(0, double.infinity).toDouble(),
+      };
+    }
+
     final balances = <String, double>{};
     for (final row in (rows[8] as List)) {
       final type = row['movement_type']?.toString();
@@ -99,6 +133,7 @@ class _ReportsPageState extends State<ReportsPage> {
       'receivable': (revenue - paid).clamp(0, double.infinity).toDouble(),
       'customerCredit': (paid - revenue).clamp(0, double.infinity).toDouble(),
       'expenses': expenses,
+      'payroll': payrollSummary,
       'inventory': (rows[7] as List).length,
       'lowStock': lowStock,
     };
@@ -154,6 +189,12 @@ class _ReportsPageState extends State<ReportsPage> {
           ('Долг покупателей', _money(d['receivable']), Icons.account_balance_wallet_outlined),
           ('Оплаты сверх выручки', _money(d['customerCredit']), Icons.savings_outlined),
           ('Учтённые расходы', _money(d['expenses']), Icons.receipt_long_outlined),
+          if (d['payroll'] != null) ...[
+            ('Начислено сотрудникам', _money(d['payroll']['accrued']), Icons.request_quote_outlined),
+            ('Удержания из начислений', _money(d['payroll']['deductions']), Icons.remove_circle_outline),
+            ('Выплачено сотрудникам', _money(d['payroll']['paid']), Icons.payments_outlined),
+            ('Остаток к выплате', _money(d['payroll']['due']), Icons.account_balance_wallet_outlined),
+          ],
           ('Позиции склада', '${d['inventory']}', Icons.inventory_2_outlined),
           ('Позиции на минимуме/ниже', '${d['lowStock']}', Icons.warning_amber_outlined),
         ];
@@ -211,6 +252,8 @@ class _ReportsPageState extends State<ReportsPage> {
               const Text(
                 'Выручка рассчитана по строкам продаж, долг — как выручка минус зарегистрированные оплаты. '
                 'Остатки склада учитывают движения с известным направлением. '
+                'Показатели зарплаты доступны владельцу, руководителю и бухгалтеру; '
+                'остаток к выплате не учитывает налоги и иные внешние обязательства. '
                 'Это управленческая сводка, а не бухгалтерская или налоговая отчётность.',
                 style: TextStyle(color: Colors.black54),
               ),
