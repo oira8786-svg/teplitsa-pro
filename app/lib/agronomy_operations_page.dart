@@ -102,8 +102,22 @@ class _AgronomyOperationsPageState extends State<AgronomyOperationsPage> {
         protectionOnly: widget.protectionOnly,
       ),
     );
-    if (created == true && mounted) {
-      setState(() => _future = _load());
+    if (created != true || !mounted) return;
+
+    // Allow the RPC transaction to finish before reading the journal again.
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    try {
+      final rows = await _load();
+      if (!mounted) return;
+      setState(() => _future = Future.value(rows));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _future = Future.error(error));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Запись сохранена. Не удалось обновить журнал — потяни список вниз или нажми обновить.'),
+        ),
+      );
     }
   }
 
