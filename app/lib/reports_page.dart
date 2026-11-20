@@ -38,7 +38,7 @@ class _ReportsPageState extends State<ReportsPage> {
       db.from('payments').select('amount,sales!inner(status)')
           .eq('organization_id', widget.organizationId)
           .neq('sales.status', 'cancelled').neq('sales.status', 'draft'),
-      db.from('expenses').select('amount')
+      db.from('expenses').select('amount,category')
           .eq('organization_id', widget.organizationId),
       db.from('inventory_items').select('id,name,base_unit,minimum_stock')
           .eq('organization_id', widget.organizationId).eq('active', true),
@@ -61,8 +61,14 @@ class _ReportsPageState extends State<ReportsPage> {
     }
     final paid = (rows[5] as List).fold<double>(
       0, (sum, row) => sum + _number(row['amount']));
-    final expenses = (rows[6] as List).fold<double>(
-      0, (sum, row) => sum + _number(row['amount']));
+    final expensesByCategory = <String, double>{};
+    for (final row in (rows[6] as List)) {
+      final category = row['category']?.toString() ?? 'other';
+      expensesByCategory[category] =
+          (expensesByCategory[category] ?? 0) + _number(row['amount']);
+    }
+    final expenses = expensesByCategory.values.fold<double>(
+      0, (sum, amount) => sum + amount);
 
     // Payroll is visible only to owner, manager and accountant roles.
     Map<String, double>? payrollSummary;
@@ -133,6 +139,7 @@ class _ReportsPageState extends State<ReportsPage> {
       'receivable': (revenue - paid).clamp(0, double.infinity).toDouble(),
       'customerCredit': (paid - revenue).clamp(0, double.infinity).toDouble(),
       'expenses': expenses,
+      'expensesByCategory': expensesByCategory,
       'payroll': payrollSummary,
       'inventory': (rows[7] as List).length,
       'lowStock': lowStock,
@@ -179,6 +186,20 @@ class _ReportsPageState extends State<ReportsPage> {
         }
         final d = snapshot.data!;
         final harvestByUnit = d['harvestByUnit'] as Map<String, double>;
+        final expensesByCategory =
+            d['expensesByCategory'] as Map<String, double>;
+        const expenseLabels = {
+          'seeds': 'Семена и рассада',
+          'fertilizers': 'Удобрения',
+          'plant_protection': 'Защита растений',
+          'utilities': 'Коммунальные услуги',
+          'rent': 'Аренда',
+          'transport': 'Транспорт',
+          'repairs': 'Ремонт',
+          'payroll': 'Зарплата',
+          'packaging': 'Упаковка',
+          'other': 'Прочее',
+        };
         final cards = <(String, String, IconData)>[
           ('Теплицы', '${d['greenhouses']}', Icons.warehouse_outlined),
           ('Партии растений', '${d['batches']}', Icons.grass_outlined),
@@ -235,6 +256,19 @@ class _ReportsPageState extends State<ReportsPage> {
                     style: Theme.of(context).textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
                 )),
+              if (expensesByCategory.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  child: Text('Расходы по категориям',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+                for (final entry in expensesByCategory.entries)
+                  Card(child: ListTile(
+                    title: Text(expenseLabels[entry.key] ?? entry.key),
+                    trailing: Text(_money(entry.value)),
+                  )),
+              ],
               if (harvestByUnit.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 const Padding(
