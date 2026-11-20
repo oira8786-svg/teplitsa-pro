@@ -95,30 +95,37 @@ class _AgronomyOperationsPageState extends State<AgronomyOperationsPage> {
   }
 
   Future<void> _create() async {
-    final created = await showDialog<bool>(
+    final createdId = await showDialog<String>(
       context: context,
       builder: (_) => _OperationFormDialog(
         organizationId: widget.organizationId,
         protectionOnly: widget.protectionOnly,
       ),
     );
-    if (created != true || !mounted) return;
+    if (createdId == null || createdId.isEmpty || !mounted) return;
 
-    // Allow the RPC transaction to finish before reading the journal again.
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    try {
-      final rows = await _load();
-      if (!mounted) return;
-      setState(() => _future = Future.value(rows));
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _future = Future.error(error));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Запись сохранена. Не удалось обновить журнал — потяни список вниз или нажми обновить.'),
-        ),
-      );
+    // Reload until the exact row returned by the INSERT RPC is visible.
+    for (var attempt = 0; attempt < 5; attempt++) {
+      try {
+        final rows = await _load();
+        if (!mounted) return;
+        if (rows.any((row) => row['id']?.toString() == createdId)) {
+          setState(() => _future = Future.value(rows));
+          return;
+        }
+      } catch (_) {
+        // Retry briefly; the next iteration performs a fresh request.
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
+
+    if (!mounted) return;
+    setState(() => _future = _load());
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Запись сохранена. Журнал ещё обновляется — нажми кнопку обновления, если запись не появилась.'),
+      ),
+    );
   }
 
   Future<void> _verifySafety(Map<String, dynamic> row) async {
@@ -491,7 +498,7 @@ class _OperationFormDialogState extends State<_OperationFormDialog> {
       _error = null;
     });
     try {
-      await Supabase.instance.client.rpc('create_agronomy_operation', params: {
+      final operationId = await Supabase.instance.client.rpc('create_agronomy_operation', params: {
         'p_organization_id': widget.organizationId,
         'p_batch_id': _batchId,
         'p_operation_type': _type,
@@ -505,7 +512,7 @@ class _OperationFormDialogState extends State<_OperationFormDialog> {
         'p_result': _result.text.trim().isEmpty ? null : _result.text.trim(),
         'p_notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       });
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) Navigator.of(context).pop(operationId?.toString());
     } on PostgrestException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
