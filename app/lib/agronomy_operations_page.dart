@@ -102,14 +102,18 @@ class _AgronomyOperationsPageState extends State<AgronomyOperationsPage> {
         protectionOnly: widget.protectionOnly,
       ),
     );
-    if (createdId == null || createdId.isEmpty || !mounted) return;
+    if (!mounted) return;
 
-    // Reload until the exact row returned by the INSERT RPC is visible.
+    // Some deployed RPC versions may return null even though the INSERT
+    // succeeded. Always refresh after the dialog reports a successful save;
+    // use the returned ID for confirmation when the function provides one.
     for (var attempt = 0; attempt < 5; attempt++) {
       try {
         final rows = await _load();
         if (!mounted) return;
-        if (rows.any((row) => row['id']?.toString() == createdId)) {
+        if (createdId == null ||
+            createdId.isEmpty ||
+            rows.any((row) => row['id']?.toString() == createdId)) {
           setState(() => _future = Future.value(rows));
           return;
         }
