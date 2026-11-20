@@ -436,7 +436,7 @@ class _OrganizationGateState extends State<OrganizationGate> {
                   child: ListTile(
                     leading: const Icon(Icons.warehouse_outlined),
                     title: Text(_organizationName(membership)),
-                    subtitle: Text('Роль: ${membership['role'] ?? 'участник'}'),
+                    subtitle: Text('Роль: ${membership['role'] ?? 'участник'} · ID: ${membership['organization_id']?.toString().substring(0, 8) ?? 'нет ID'}'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       Navigator.of(context).push(
