@@ -170,5 +170,19 @@ class MigrationManifestTests(unittest.TestCase):
         self.assertIn("DropdownMenuItem(value: 'active'", catalog_source)
 
 
-if __name__ == "__main__":
+
+    def test_treatment_safety_https_guard_is_a_complete_sql_predicate(self) -> None:
+        migration = MIGRATIONS_DIR / "202611190001_treatment_safety_attestation.sql"
+        migration_sql = migration.read_text(encoding="utf-8")
+        bundle_sql = INSTALL_BUNDLE.read_text(encoding="utf-8")
+
+        expected = (
+            "or trim(p_source_url) !~* "
+            "'^https://[^[:space:]/?#]+([/?#][^[:space:]]*)?
+    unittest.main()
+ then"
+        )
+        self.assertIn(expected, migration_sql)
+        self.assertIn(expected, bundle_sql)
+\nif __name__ == "__main__":
     unittest.main()
