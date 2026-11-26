@@ -1079,7 +1079,9 @@ begin
       using errcode = '22023';
   end if;
 
-  if p_source_url is null or lower(trim(p_source_url)) not like 'https://%' then
+  if p_source_url is null
+    or length(trim(p_source_url)) > 2048
+    or trim(p_source_url) !~* '^https://[^[:space:]/?#]+([/?#][^[:space:]]*)?$' then
     raise exception 'An HTTPS source URL is required for safety verification'
       using errcode = '22023';
   end if;
