@@ -188,6 +188,8 @@ class _ReportsPageState extends State<ReportsPage> {
         final harvestByUnit = d['harvestByUnit'] as Map<String, double>;
         final expensesByCategory =
             d['expensesByCategory'] as Map<String, double>;
+        final expenseEntries = expensesByCategory.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
         const expenseLabels = {
           'seeds': 'Семена и рассада',
           'fertilizers': 'Удобрения',
@@ -263,7 +265,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   child: Text('Расходы по категориям',
                       style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
-                for (final entry in expensesByCategory.entries)
+                for (final entry in expenseEntries)
                   Card(child: ListTile(
                     title: Text(expenseLabels[entry.key] ?? entry.key),
                     trailing: Text(_money(entry.value)),
