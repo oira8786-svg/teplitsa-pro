@@ -268,6 +268,11 @@ class _ReportsPageState extends State<ReportsPage> {
                 for (final entry in expenseEntries)
                   Card(child: ListTile(
                     title: Text(expenseLabels[entry.key] ?? entry.key),
+                    subtitle: Text(
+                      d['expenses'] > 0
+                          ? '${(entry.value / d['expenses'] * 100).toStringAsFixed(1)}% от всех расходов'
+                          : '0% от всех расходов',
+                    ),
                     trailing: Text(_money(entry.value)),
                   )),
               ],
